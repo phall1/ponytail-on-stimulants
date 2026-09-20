@@ -2,7 +2,7 @@
 
 **Task:** "Write Python code that reads sales.csv and sums the 'amount' column."
 
-Verbatim model output from a benchmark run, Claude Haiku 4.5, no-skill arm vs ponytail arm, temperature 1, source `benchmarks/output.json`. Reproduce: `npx promptfoo@latest eval -c benchmarks/promptfooconfig.yaml`.
+Verbatim inherited upstream Ponytail benchmark output (Claude Haiku 4.5, temperature 1), retained as historical evidence; not a Ponytail on Stimulants result.
 
 ## Without Ponytail, 20 lines of code
 

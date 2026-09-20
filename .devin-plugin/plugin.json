@@ -1,13 +1,18 @@
 {
-  "name": "ponytail",
-  "version": "4.10.0",
-  "description": "Lazy senior dev mode. Forces the simplest, shortest solution that actually works: YAGNI, stdlib first, no unrequested abstractions.",
+  "name": "ponytail-on-stimulants",
+  "version": "0.1.0",
+  "description": "Minimal architecture. Maximal execution. Completion discipline for coding agents.",
   "author": {
-    "name": "Dietrich Gebert",
-    "url": "https://github.com/DietrichGebert"
+    "name": "phall1",
+    "url": "https://github.com/phall1"
   },
-  "homepage": "https://github.com/DietrichGebert/ponytail",
-  "repository": "https://github.com/DietrichGebert/ponytail",
+  "homepage": "https://github.com/phall1/ponytail-on-stimulants",
+  "repository": "https://github.com/phall1/ponytail-on-stimulants",
   "license": "MIT",
-  "keywords": ["yagni", "minimalism", "code-review", "productivity"]
+  "keywords": [
+    "yagni",
+    "minimalism",
+    "code-review",
+    "productivity"
+  ]
 }

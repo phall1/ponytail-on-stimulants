@@ -1,0 +1,17 @@
+{
+  "A_prompt_only": {
+    "completionGate": "none",
+    "jev": false,
+    "description": "Canonical completion-loop prompt only."
+  },
+  "B_deterministic": {
+    "completionGate": "deterministic",
+    "jev": false,
+    "description": "Prompt plus the feral two-pass deterministic gate with Jev forcibly disabled."
+  },
+  "C_deterministic_jev": {
+    "completionGate": "deterministic",
+    "jev": true,
+    "description": "The identical feral two-pass gate with optional Jev evidence enabled."
+  }
+}

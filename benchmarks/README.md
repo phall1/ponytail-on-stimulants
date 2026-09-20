@@ -1,6 +1,10 @@
-# Benchmark
+# Inherited architecture benchmark
 
-Three arms (no skill, [caveman](https://github.com/JuliusBrussee/caveman), ponytail), three models, five everyday tasks, **10 runs per cell, median reported**. Code LOC is counted from fenced code blocks; tokens, cost, and latency come straight from the API.
+> **Upstream heritage:** the committed reports in `benchmarks/results/` were produced by upstream Ponytail before this fork. They remain reproducibility/provenance evidence and are not claims about Ponytail on Stimulants. The active harness points at the fork skill, but new results must use a new dated report and identify the tested commit.
+>
+> Fork-specific task-completion, premature-stop, caller-coverage, verification, failure, scope, regression, cost, and duration evaluation lives in [`completion/`](completion/).
+
+Three arms (no skill, [caveman](https://github.com/JuliusBrussee/caveman), Ponytail lineage), three models, five everyday tasks, **10 runs per cell, median reported**. Code LOC is counted from fenced code blocks; tokens, cost, and latency come straight from the API.
 
 ## Reproduce
 

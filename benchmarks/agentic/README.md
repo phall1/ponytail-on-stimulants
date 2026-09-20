@@ -1,5 +1,7 @@
 # Agentic benchmark
 
+> **Provenance:** numeric results documented below are inherited from upstream Ponytail and are not fork-result claims. The active harness uses the `ponytail-on-stimulants` arm; publish new fork runs separately with commit and raw metadata. See `../completion/` for the fork completion corpus.
+
 The single-shot benchmark (`../promptfooconfig.yaml`) measures one prompt, one completion.
 A fair critique ([#126](https://github.com/DietrichGebert/ponytail/issues/126)) is that this
 does not reflect how a coding agent is actually used, and that counting lines of a
@@ -25,7 +27,7 @@ the job properly, so any difference is the skill's effect, not the model being c
 
 ## Arms
 
-`baseline` (no skill) · `ponytail` · `caveman` · `yagni` ("Follow YAGNI principles.") ·
+`baseline` (no skill) · `ponytail-on-stimulants` · `caveman` · `yagni` ("Follow YAGNI principles.") ·
 `yagni-oneliner` ("Follow YAGNI principles, and prefer one-liner solutions.")
 
 The last two are the seven-word prompts from the #126 writeup, included on purpose: if a one-line
@@ -112,7 +114,7 @@ python complete.py --run runs/<stamp>  # completeness-score every workspace
 ## Reproduce
 
 Needs the `claude` CLI (this is the harness, no SDK), Python 3, an authenticated Claude Code, and a
-clone of the template at the pinned commit (set `PONYTAIL_TMPL` to its path, or drop it at
+clone of the template at the pinned commit (set `PONYTAIL_ON_STIMULANTS_TMPL` to its path, or drop it at
 `fixtures/full-stack-fastapi-template`):
 
 ```bash
@@ -124,10 +126,10 @@ cd full-stack-fastapi-template && git checkout cd83fc1
 python run.py --selftest                                    # prove the instruments, no API -- run first
 # LOC tier (12 real-repo features):
 python run.py --task tmpl-fe-datepicker,tmpl-fe-colorpicker,tmpl-fe-command,tmpl-fe-dropzone,tmpl-fe-wizard,tmpl-fe-rating,tmpl-be-duplicate,tmpl-be-search,tmpl-be-count,tmpl-be-archive,tmpl-be-bulkdelete,tmpl-be-csv \
-  --arms baseline,caveman,ponytail,yagni-oneliner --models haiku --runs 4 --workers 6
+  --arms baseline,caveman,ponytail-on-stimulants,yagni-oneliner --models haiku --runs 4 --workers 6
 # safety tier (7 surgical tasks):
 python run.py --task safe-path,critic-email,rate-limit,sql-user,auth-token,csv-sum,cache \
-  --arms baseline,caveman,ponytail,yagni-oneliner --models haiku --runs 4 --workers 6
+  --arms baseline,caveman,ponytail-on-stimulants,yagni-oneliner --models haiku --runs 4 --workers 6
 python run.py --rescore runs/<stamp>                        # recompute metrics offline, no API
 ```
 

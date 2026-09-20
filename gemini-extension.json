@@ -1,6 +1,6 @@
 {
-  "name": "ponytail",
-  "version": "4.10.0",
-  "description": "Lazy senior dev mode. Forces the simplest, shortest solution that actually works: YAGNI, stdlib first, no unrequested abstractions.",
+  "name": "ponytail-on-stimulants",
+  "version": "0.1.0",
+  "description": "Minimal architecture. Maximal execution. Completion discipline for coding agents.",
   "contextFileName": "AGENTS.md"
 }

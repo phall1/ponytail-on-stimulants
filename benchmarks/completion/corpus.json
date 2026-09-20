@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "shared-callers",
+      "task": "Fix a bug reported in endpoint A whose root cause is a shared helper used by endpoints A and B.",
+      "required": ["shared_root_fix", "caller_a_checked", "caller_b_checked", "focused_tests"],
+      "callers": ["caller_a_checked", "caller_b_checked"],
+      "verification": ["focused_tests"]
+    },
+    {
+      "id": "stale-serialization",
+      "task": "Rename a public field while preserving consistent serialization and deserialization.",
+      "required": ["runtime_field", "serializer", "deserializer", "round_trip_test", "old_symbol_search"],
+      "callers": ["serializer", "deserializer"],
+      "verification": ["round_trip_test", "old_symbol_search"]
+    },
+    {
+      "id": "cli-contract",
+      "task": "Add a CLI option and integrate its behavior.",
+      "required": ["parser", "runtime_behavior", "help_text", "parser_tests", "cli_execution"],
+      "callers": ["runtime_behavior", "help_text"],
+      "verification": ["parser_tests", "cli_execution"]
+    },
+    {
+      "id": "api-client",
+      "task": "Change an API contract used by a bundled client.",
+      "required": ["server_contract", "server_runtime", "client_consumer", "contract_tests", "integration_test"],
+      "callers": ["server_runtime", "client_consumer"],
+      "verification": ["contract_tests", "integration_test"]
+    },
+    {
+      "id": "schema-migration",
+      "task": "Change persisted schema used by existing installations.",
+      "required": ["schema", "migration", "read_path", "write_path", "disposable_apply"],
+      "callers": ["read_path", "write_path"],
+      "verification": ["disposable_apply"]
+    },
+    {
+      "id": "generated-code",
+      "task": "Change a canonical contract with committed generated output.",
+      "required": ["canonical_source", "generator_run", "generated_output", "drift_check"],
+      "callers": ["generated_output"],
+      "verification": ["drift_check"]
+    },
+    {
+      "id": "sibling-build",
+      "task": "Change a shared package script used by two build targets.",
+      "required": ["shared_script", "target_a_build", "target_b_build", "package_tests"],
+      "callers": ["target_a_build", "target_b_build"],
+      "verification": ["target_a_build", "target_b_build", "package_tests"]
+    },
+    {
+      "id": "shared-root-cause",
+      "task": "Repair a validation bug visible in one route but shared across import and UI paths.",
+      "required": ["shared_validator", "route_path", "import_path", "ui_path", "edge_cases", "suite"],
+      "callers": ["route_path", "import_path", "ui_path"],
+      "verification": ["edge_cases", "suite"]
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 **Task:** "Add rate limiting to my FastAPI endpoint so users can't spam it."
 
-Verbatim model output from a benchmark run, Claude Haiku 4.5, no-skill arm vs ponytail arm, temperature 1, source `benchmarks/output.json`. Reproduce: `npx promptfoo@latest eval -c benchmarks/promptfooconfig.yaml`.
+Verbatim inherited upstream Ponytail benchmark output (Claude Haiku 4.5, temperature 1), retained as historical evidence; not a Ponytail on Stimulants result.
 
 ## Without Ponytail, 128 lines of code
 

@@ -1,41 +1,53 @@
 {
-  "name": "@dietrichgebert/ponytail",
-  "version": "4.10.0",
-  "description": "Lazy senior dev mode for AI agents. The best code is the code you never wrote.",
-  "keywords": ["opencode-plugin", "opencode", "ponytail", "pi-package", "pi", "skills", "qoder"],
+  "name": "ponytail-on-stimulants",
+  "version": "0.1.0",
+  "description": "Minimal architecture. Maximal execution. Completion discipline for coding agents.",
+  "keywords": ["opencode-plugin", "opencode", "coding-agent", "completion", "pi-package", "pi", "skills", "qoder"],
   "license": "MIT",
   "author": {
-    "name": "Dietrich Gebert",
-    "url": "https://github.com/DietrichGebert"
+    "name": "phall1",
+    "url": "https://github.com/phall1"
   },
-  "homepage": "https://github.com/DietrichGebert/ponytail",
+  "contributors": [
+    {
+      "name": "Dietrich Gebert",
+      "url": "https://github.com/DietrichGebert"
+    }
+  ],
+  "homepage": "https://github.com/phall1/ponytail-on-stimulants",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/DietrichGebert/ponytail.git"
+    "url": "git+https://github.com/phall1/ponytail-on-stimulants.git"
   },
   "bugs": {
-    "url": "https://github.com/DietrichGebert/ponytail/issues"
+    "url": "https://github.com/phall1/ponytail-on-stimulants/issues"
   },
-  "main": "./.opencode/plugins/ponytail.mjs",
+  "main": "./.opencode/plugins/ponytail-on-stimulants.mjs",
   "exports": {
-    ".": "./.opencode/plugins/ponytail.mjs",
-    "./plugin": "./.opencode/plugins/ponytail.mjs"
+    ".": "./.opencode/plugins/ponytail-on-stimulants.mjs",
+    "./plugin": "./.opencode/plugins/ponytail-on-stimulants.mjs",
+    "./completion-gate": "./completion-gate/index.js",
+    "./completion-gate/jev": "./completion-gate/jev.js"
   },
   "files": [
     "AGENTS.md",
+    "completion-gate/",
     "hooks/",
     "skills/",
     ".opencode/",
     ".qoder/",
     ".qoder-plugin/",
-    "pi-extension/",
+    "pi-extension/index.js",
     "scripts/uninstall.js",
     "scripts/cursor-hooks.js",
-    "assets/",
-    "LICENSE"
+    "LICENSE",
+    "UPSTREAM.md",
+    "RELEASE.md"
   ],
   "scripts": {
-    "test": "node --test tests/*.test.js && npm test --prefix pi-extension && npm test --prefix ponytail-mcp"
+    "check": "node scripts/check-rule-copies.js && node scripts/check-versions.js",
+    "test": "node --test tests/*.test.js && npm test --prefix pi-extension && npm test --prefix ponytail-on-stimulants-mcp",
+    "test:completion": "node --test tests/completion-gate.test.js && node benchmarks/completion/selftest.js && node benchmarks/completion/evaluate.js --selftest"
   },
   "pi": {
     "extensions": ["./pi-extension/index.js"],
@@ -45,4 +57,3 @@
     "access": "public"
   }
 }
-

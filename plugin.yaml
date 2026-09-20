@@ -1,21 +1,21 @@
-name: ponytail
-version: 4.10.0
-description: Lazy senior dev mode for Hermes Agent, always-on context, bundled skills, and slash commands.
-author: Dietrich Gebert
+name: ponytail-on-stimulants
+version: 0.1.0
+description: Minimal architecture. Maximal execution. Completion discipline for Hermes Agent.
+author: phall1
 provides_hooks:
   - pre_llm_call
   - pre_gateway_dispatch
 provides_commands:
-  - ponytail
-  - ponytail-review
-  - ponytail-audit
-  - ponytail-debt
-  - ponytail-gain
-  - ponytail-help
+  - ponytail-on-stimulants
+  - ponytail-on-stimulants-review
+  - ponytail-on-stimulants-audit
+  - ponytail-on-stimulants-debt
+  - ponytail-on-stimulants-gain
+  - ponytail-on-stimulants-help
 provides_skills:
-  - ponytail
-  - ponytail-review
-  - ponytail-audit
-  - ponytail-debt
-  - ponytail-gain
-  - ponytail-help
+  - ponytail-on-stimulants
+  - ponytail-on-stimulants-review
+  - ponytail-on-stimulants-audit
+  - ponytail-on-stimulants-debt
+  - ponytail-on-stimulants-gain
+  - ponytail-on-stimulants-help

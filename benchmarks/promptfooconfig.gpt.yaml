@@ -12,8 +12,8 @@ providers:
 prompts:
   - id: file://arms/baseline.js
     label: baseline (no skill)
-  - id: file://arms/ponytail.js
-    label: ponytail
+  - id: file://arms/ponytail-on-stimulants.js
+    label: ponytail-on-stimulants
 
 defaultTest:
   assert:

@@ -1,0 +1,129 @@
+name: upstream sync
+
+on:
+  schedule:
+    - cron: '23 7 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Fetch canonical upstream
+        run: |
+          git remote add upstream https://github.com/DietrichGebert/ponytail.git 2>/dev/null || git remote set-url upstream https://github.com/DietrichGebert/ponytail.git
+          git fetch upstream main --tags
+          echo "sha=$(git rev-parse upstream/main)" >> "$GITHUB_OUTPUT"
+          echo "version=$(git describe --tags --abbrev=0 upstream/main)" >> "$GITHUB_OUTPUT"
+        id: upstream
+      - name: Reconcile on a temporary branch
+        id: merge
+        env:
+          UPSTREAM_SHA: ${{ steps.upstream.outputs.sha }}
+          UPSTREAM_VERSION: ${{ steps.upstream.outputs.version }}
+        run: |
+          short=${UPSTREAM_SHA:0:12}
+          branch="automation/upstream-sync-$short"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "clean=up-to-date" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git switch -c "$branch"
+          if ! git merge --no-ff --no-commit upstream/main; then
+            git diff --name-only --diff-filter=U > /tmp/upstream-conflicts.txt
+            git merge --abort || true
+            echo "clean=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          p = Path('UPSTREAM.md')
+          text = p.read_text()
+          text = re.sub(r'(?m)^Last reconciled version: `[^`]+`$', f"Last reconciled version: `{os.environ['UPSTREAM_VERSION']}`", text)
+          text = re.sub(r'(?m)^Last reconciled commit: `[^`]+`$', f"Last reconciled commit: `{os.environ['UPSTREAM_SHA']}`", text)
+          p.write_text(text)
+          PY
+          node scripts/build-openclaw-skills.js
+          git add -A
+          git commit -m "chore: sync upstream ${short}"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            git fetch origin "$branch"
+            if [[ $(git rev-parse 'HEAD^{tree}') != $(git rev-parse "origin/${branch}^{tree}") ]]; then
+              echo "Existing remote branch $branch does not match the freshly reconciled tree." > /tmp/upstream-conflicts.txt
+              echo "clean=branch-mismatch" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "clean=existing" >> "$GITHUB_OUTPUT"
+          else
+            echo "clean=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Record unresolved reconciliation
+        if: steps.merge.outputs.clean == 'false' || steps.merge.outputs.clean == 'branch-mismatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPSTREAM_SHA: ${{ steps.upstream.outputs.sha }}
+        run: |
+          conflicts=$(cat /tmp/upstream-conflicts.txt)
+          title="Upstream sync needs review: ${UPSTREAM_SHA:0:12}"
+          existing=$(gh issue list --state open --search "$title in:title" --json number --jq 'length')
+          if [[ "$existing" == 0 ]]; then
+            gh issue create --title "$title" --body "Automated reconciliation found conflicts and did not push a branch. Conflicting paths:\n\n\`\`\`\n$conflicts\n\`\`\`\n\nFollow UPSTREAM.md and reconcile behavioral policy deliberately."
+          fi
+      - name: Install validation dependencies
+        if: steps.merge.outputs.clean == 'true' || steps.merge.outputs.clean == 'existing'
+        run: |
+          pip install pandas==2.3.3
+          npm install --prefix ponytail-on-stimulants-mcp
+      - name: Validate reconciled fork
+        if: steps.merge.outputs.clean == 'true' || steps.merge.outputs.clean == 'existing'
+        run: |
+          npm run check
+          npm test
+          npm run test:completion
+          python3 benchmarks/agentic/run.py --selftest
+          python3 benchmarks/agentic/complete.py --selftest-offline
+      - name: Push temporary branch and open PR
+        if: steps.merge.outputs.clean == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.merge.outputs.branch }}
+          UPSTREAM_SHA: ${{ steps.upstream.outputs.sha }}
+        run: |
+          git push origin "$BRANCH"
+          gh pr create --base main --head "$BRANCH" \
+            --title "chore: sync upstream ${UPSTREAM_SHA:0:12}" \
+            --body "Automated clean reconciliation of canonical upstream. Behavioral conflicts still require human review. Validation passed; this workflow never auto-merges."
+      - name: Recover a validated branch whose PR was not created
+        if: steps.merge.outputs.clean == 'existing'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.merge.outputs.branch }}
+          UPSTREAM_SHA: ${{ steps.upstream.outputs.sha }}
+        run: |
+          if [[ $(gh pr list --head "$BRANCH" --state open --json number --jq 'length') == 0 ]]; then
+            gh pr create --base main --head "$BRANCH" \
+              --title "chore: sync upstream ${UPSTREAM_SHA:0:12}" \
+              --body "Recovered an upstream-sync branch whose tree exactly matched a fresh reconciliation and passed validation again. This workflow never auto-merges."
+          fi

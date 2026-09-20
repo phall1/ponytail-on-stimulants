@@ -10,6 +10,8 @@ node_modules/
 .promptfoo/
 benchmarks/output*
 benchmarks/benchmark-local-results.json
+benchmarks/completion/*.artifacts/
+benchmarks/completion/runs/
 
 # Python
 __pycache__/
@@ -17,7 +19,7 @@ __pycache__/
 # one-off social/announcement art, not repo content
 announce-*.png
 changelog-*.png
-ponytail-*.gif
+ponytail-on-stimulants-*.gif
 
 # Claude Code local settings (machine-specific permission grants)
 .claude/settings.local.json

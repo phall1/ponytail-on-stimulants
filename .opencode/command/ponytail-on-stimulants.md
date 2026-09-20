@@ -1,0 +1,4 @@
+---
+description: Switch Ponytail on Stimulants mode (focused/full-send/feral/off)
+---
+Switch to Ponytail on Stimulants $ARGUMENTS mode. If no mode is specified, use full-send. Minimal architecture, maximal execution: understand and trace affected paths; choose the smallest sound design; implement the full requested outcome and mechanically implied work; verify proportionately; perform the mode-appropriate adversarial completion pass; keep scope bounded.

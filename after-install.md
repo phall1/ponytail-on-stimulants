@@ -1,22 +1,11 @@
-# Ponytail for Hermes installed
+# Ponytail on Stimulants for Hermes installed
 
-Enable it if you did not install with `--enable`:
+Enable it if installation did not use `--enable`:
 
-```bash
-hermes plugins enable ponytail
+```sh
+hermes plugins enable ponytail-on-stimulants
 ```
 
-Restart Hermes or the gateway after enabling.
+Restart Hermes or the gateway. In shared gateways, restrict the fork's slash commands to trusted users.
 
-In shared gateways, restrict `/ponytail` to trusted users with Hermes slash-command access controls; runtime mode is process-local.
-
-Commands:
-
-- `/ponytail [lite|full|ultra|off]`
-- `/ponytail-review [target]`
-- `/ponytail-audit [target]`
-- `/ponytail-debt`
-- `/ponytail-gain`
-- `/ponytail-help`
-
-Bundled skills are available as `ponytail:ponytail`, `ponytail:ponytail-review`, `ponytail:ponytail-audit`, `ponytail:ponytail-debt`, `ponytail:ponytail-gain`, and `ponytail:ponytail-help`.
+Commands use the unique `/ponytail-on-stimulants*` namespace. Modes are `focused`, `full-send`, `feral`, and `off`; `full-send` is the default. Bundled skills are exposed under the `ponytail-on-stimulants:` namespace.

@@ -1,4 +1,7 @@
-"""Hermes plugin for Ponytail."""
+"""Hermes plugin for Ponytail on Stimulants.
+
+Derived from DietrichGebert/ponytail under the MIT license.
+"""
 
 from __future__ import annotations
 
@@ -8,54 +11,76 @@ import re
 from pathlib import Path
 from typing import Any, Callable
 
-DEFAULT_MODE = "full"
-RUNTIME_MODES = {"off", "lite", "full", "ultra"}
+DEFAULT_MODE = "full-send"
+RUNTIME_MODES = {"off", "focused", "full-send", "feral"}
+MODE_ALIASES = {"lite": "focused", "full": "full-send", "ultra": "feral"}
 CONFIG_MODES = RUNTIME_MODES | {"review"}
 SKILL_COMMANDS = {
-    "ponytail-review": "Review the current diff or provided target for over-engineering.",
-    "ponytail-audit": "Audit the repo for over-engineering and deletion opportunities.",
-    "ponytail-debt": "List every deliberate `ponytail:` shortcut and its upgrade path.",
-    "ponytail-gain": "Show the measured-impact scoreboard (less code, less cost, more speed).",
-    "ponytail-help": "Show the Ponytail command reference.",
+    "ponytail-on-stimulants-review": "Review the current diff for unnecessary complexity and unfinished work.",
+    "ponytail-on-stimulants-audit": "Audit the repo for incomplete execution and unjustified complexity.",
+    "ponytail-on-stimulants-debt": "List deliberate shortcuts and their bounded upgrade paths.",
+    "ponytail-on-stimulants-gain": "Show the benchmark and completion-measurement reference.",
+    "ponytail-on-stimulants-help": "Show the Ponytail on Stimulants command reference.",
 }
 
 ROOT = Path(__file__).resolve().parent
 SKILLS_DIR = ROOT / "skills"
-PONYTAIL_SKILL = SKILLS_DIR / "ponytail" / "SKILL.md"
-REVIEW_SKILL = SKILLS_DIR / "ponytail-review" / "SKILL.md"
-
+MAIN_SKILL = SKILLS_DIR / "ponytail-on-stimulants" / "SKILL.md"
+REVIEW_SKILL = SKILLS_DIR / "ponytail-on-stimulants-review" / "SKILL.md"
 _current_mode = None
 
 
-def _normalize_runtime_mode(mode: str | None) -> str | None:
+def _canonical_mode(mode: str | None) -> str | None:
     if not isinstance(mode, str):
         return None
-    mode = mode.strip().lower()
+    normalized = mode.strip().lower()
+    return MODE_ALIASES.get(normalized, normalized)
+
+
+def _normalize_runtime_mode(mode: str | None) -> str | None:
+    mode = _canonical_mode(mode)
     return mode if mode in RUNTIME_MODES else None
 
 
 def _normalize_config_mode(mode: str | None) -> str | None:
-    if not isinstance(mode, str):
-        return None
-    mode = mode.strip().lower()
+    mode = _canonical_mode(mode)
     return mode if mode in CONFIG_MODES else None
 
 
 def _config_dir() -> Path:
     if os.environ.get("XDG_CONFIG_HOME"):
-        return Path(os.environ["XDG_CONFIG_HOME"]) / "ponytail"
+        return Path(os.environ["XDG_CONFIG_HOME"]) / "ponytail-on-stimulants"
     if os.name == "nt":
-        return Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming")) / "ponytail"
-    return Path.home() / ".config" / "ponytail"
+        base = os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming")
+        return Path(base) / "ponytail-on-stimulants"
+    return Path.home() / ".config" / "ponytail-on-stimulants"
+
+
+def _write_default_mode(mode: str) -> str | None:
+    normalized = _normalize_runtime_mode(mode)
+    if not normalized:
+        return None
+    config_dir = _config_dir()
+    config_path = config_dir / "config.json"
+    try:
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            data = {}
+    except Exception:
+        data = {}
+    config_dir.mkdir(parents=True, exist_ok=True)
+    data["defaultMode"] = normalized
+    config_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    return normalized
 
 
 def _default_mode() -> str:
-    env_mode = _normalize_config_mode(os.environ.get("PONYTAIL_DEFAULT_MODE"))
+    env_mode = _normalize_runtime_mode(os.environ.get("PONYTAIL_ON_STIMULANTS_DEFAULT_MODE"))
     if env_mode:
         return env_mode
     try:
         data = json.loads((_config_dir() / "config.json").read_text(encoding="utf-8"))
-        file_mode = _normalize_config_mode(data.get("defaultMode"))
+        file_mode = _normalize_runtime_mode(data.get("defaultMode"))
         if file_mode:
             return file_mode
     except Exception:
@@ -76,48 +101,40 @@ def _filter_skill_body_for_mode(body: str, mode: str) -> str:
             label_mode = _normalize_runtime_mode(table_label.group(1))
             if label_mode and label_mode != effective:
                 continue
-
-        example_label = re.match(r"^-\s*([^:]+):\s*", line)
+        example_label = re.match(r'^-\s*([^:]+):\s*"', line)
         if example_label:
             label_mode = _normalize_runtime_mode(example_label.group(1))
             if label_mode and label_mode != effective:
                 continue
-
         lines.append(line)
     return "\n".join(lines)
 
 
 def _fallback_instructions(mode: str) -> str:
     return (
-        f"PONYTAIL MODE ACTIVE — level: {mode}\n\n"
-        "You are a lazy senior developer. Lazy means efficient, not careless. "
-        "The best code is the code never written.\n\n"
-        "Before any code, stop at the first rung that holds: YAGNI, stdlib, "
-        "native platform, installed dependency, one line, then minimum code. "
-        "No unrequested abstractions, avoidable dependencies, boilerplate, or "
-        "speculative scaffolding. Deletion over addition. Boring over clever. "
-        "Do not simplify away trust-boundary validation, data-loss handling, "
-        "security, accessibility, explicitly requested behavior, or one small "
-        "runnable check for non-trivial logic."
+        f"PONYTAIL ON STIMULANTS ACTIVE — mode: {mode}\n\n"
+        "Minimal architecture. Maximal execution. Understand and trace affected paths; "
+        "choose the smallest sound design; implement the whole requested outcome and "
+        "mechanically implied work; verify proportionately; perform an adversarial second "
+        "pass; keep scope bounded."
     )
 
 
 def build_injected_context(mode: str | None = None) -> str:
-    """Return the mode-filtered Ponytail context injected before LLM turns."""
+    """Return mode-filtered completion context for a Hermes LLM turn."""
     configured = _normalize_config_mode(mode) or _default_mode()
     if configured == "off":
         return ""
     if configured == "review":
         try:
             body = REVIEW_SKILL.read_text(encoding="utf-8")
-            return f"PONYTAIL MODE ACTIVE — level: review\n\n{_strip_frontmatter(body)}"
+            return f"PONYTAIL ON STIMULANTS ACTIVE — mode: review\n\n{_strip_frontmatter(body)}"
         except OSError:
-            return "PONYTAIL MODE ACTIVE — level: review. Review diffs for unnecessary complexity."
-
+            return "PONYTAIL ON STIMULANTS ACTIVE — mode: review. Review complexity and unfinished work."
     effective = _normalize_runtime_mode(configured) or DEFAULT_MODE
     try:
-        body = PONYTAIL_SKILL.read_text(encoding="utf-8")
-        return f"PONYTAIL MODE ACTIVE — level: {effective}\n\n{_filter_skill_body_for_mode(body, effective)}"
+        body = MAIN_SKILL.read_text(encoding="utf-8")
+        return f"PONYTAIL ON STIMULANTS ACTIVE — mode: {effective}\n\n{_filter_skill_body_for_mode(body, effective)}"
     except OSError:
         return _fallback_instructions(effective)
 
@@ -129,10 +146,9 @@ def _pre_llm_call(session_id: str = "", **_: Any) -> dict[str, str] | None:
 
 
 def _skill_prompt(command: str, args: str = "") -> str:
-    tail = args.strip()
-    target = f"\n\nUser arguments: {tail}" if tail else ""
+    target = f"\n\nUser arguments: {args.strip()}" if args.strip() else ""
     return (
-        f"Load and follow the Hermes plugin skill `ponytail:{command}`. "
+        f"Load and follow the Hermes plugin skill `ponytail-on-stimulants:{command}`. "
         f"{SKILL_COMMANDS[command]}{target}"
     )
 
@@ -151,15 +167,13 @@ def _slash_access_denied(event: Any, gateway: Any, command: str) -> bool:
 
 
 def rewrite_gateway_command(event: Any = None, gateway: Any = None, **_: Any) -> dict[str, str] | None:
-    """Rewrite authorized gateway /ponytail-* commands into normal agent prompts."""
+    """Rewrite authorized fork skill commands into normal agent prompts."""
     text = str(getattr(event, "text", "") or "").strip()
     if not text.startswith("/"):
         return None
     head, _, rest = text[1:].partition(" ")
     command = head.replace("_", "-").lower()
-    if command not in SKILL_COMMANDS:
-        return None
-    if _slash_access_denied(event, gateway, command):
+    if command not in SKILL_COMMANDS or _slash_access_denied(event, gateway, command):
         return None
     return {"action": "rewrite", "text": _skill_prompt(command, rest)}
 
@@ -167,33 +181,38 @@ def rewrite_gateway_command(event: Any = None, gateway: Any = None, **_: Any) ->
 def _handle_mode_command(raw_args: str) -> str:
     global _current_mode
     arg = (raw_args or "").strip().lower()
-    if not arg:
+    parts = arg.split()
+    if not parts or parts[0] == "status":
         mode = _current_mode or _default_mode()
-        return f"Ponytail mode: {mode}. Use `/ponytail lite|full|ultra|off`."
-    mode = _normalize_runtime_mode(arg)
+        return f"Ponytail on Stimulants: current {mode}; default {_default_mode()}."
+    if parts[0] == "default":
+        written = _write_default_mode(parts[1] if len(parts) == 2 else "")
+        return (
+            f"Ponytail on Stimulants default mode set to {written}."
+            if written
+            else "Usage: /ponytail-on-stimulants default [focused|full-send|feral|off]"
+        )
+    mode = _normalize_runtime_mode(parts[0]) if len(parts) == 1 else None
     if not mode:
-        return "Usage: /ponytail [lite|full|ultra|off]"
+        return "Usage: /ponytail-on-stimulants [focused|full-send|feral|off|status|default <mode>]"
     _current_mode = mode
-    return f"Ponytail mode set to {mode}."
+    return f"Ponytail on Stimulants mode set to {mode}."
 
 
 def _make_skill_command_handler(ctx: Any, command: str) -> Callable[[str], str]:
     def handler(raw_args: str) -> str:
         prompt = _skill_prompt(command, raw_args or "")
-        injected = False
         try:
-            injected = bool(ctx.inject_message(prompt))
+            if ctx.inject_message(prompt):
+                return f"Queued `{command}` for the agent."
         except Exception:
-            injected = False
-        if injected:
-            return f"Queued `{command}` for the agent."
+            pass
         return prompt
-
     return handler
 
 
 def register(ctx: Any) -> None:
-    """Register Ponytail hooks, skills, and slash commands with Hermes."""
+    """Register fork hooks, skills, and slash commands with Hermes."""
     for child in sorted(SKILLS_DIR.iterdir() if SKILLS_DIR.exists() else []):
         skill_md = child / "SKILL.md"
         if child.is_dir() and skill_md.exists():
@@ -201,12 +220,11 @@ def register(ctx: Any) -> None:
 
     ctx.register_hook("pre_llm_call", _pre_llm_call)
     ctx.register_hook("pre_gateway_dispatch", rewrite_gateway_command)
-
     ctx.register_command(
-        "ponytail",
+        "ponytail-on-stimulants",
         _handle_mode_command,
-        description="Set Ponytail lazy senior dev mode: lite, full, ultra, or off.",
-        args_hint="[lite|full|ultra|off]",
+        description="Set execution mode, inspect status, or persist the default.",
+        args_hint="[focused|full-send|feral|off|status|default <mode>]",
     )
     for command, description in SKILL_COMMANDS.items():
         ctx.register_command(

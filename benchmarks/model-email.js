@@ -1,7 +1,7 @@
 // Cross-model email rate at high n: is the parseaddr quirk gpt-5.4-mini-specific?
 const fs = require('fs'), path = require('path');
 const { checkPy, pyBlock, TASKS } = require('./robustness-audit.js');
-const skill = fs.readFileSync(path.join(__dirname, '..', 'skills', 'ponytail', 'SKILL.md'), 'utf8');
+const skill = fs.readFileSync(path.join(__dirname, '..', 'skills', 'ponytail-on-stimulants', 'SKILL.md'), 'utf8');
 const email = TASKS.find(t => t.name === 'email');
 const N = Number(process.env.ME_N) || 100;
 const MODELS = (process.env.ME_MODELS || 'gpt-4.1-mini,gpt-5.4-mini').split(',');
@@ -25,7 +25,7 @@ async function call(model, system, user) {
   console.log('model           baseline   ponytail');
   for (const model of MODELS) {
     const rates = {};
-    for (const [arm, sys] of [['baseline', null], ['ponytail', skill]]) {
+    for (const [arm, sys] of [['baseline', null], ['ponytail-on-stimulants', skill]]) {
       let pass = 0, err = 0;
       for (let i = 0; i < N; i++) {
         const r = await call(model, sys, email.prompt);

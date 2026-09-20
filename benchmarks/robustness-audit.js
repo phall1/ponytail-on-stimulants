@@ -8,7 +8,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-// ponytail: probe once at load; mirrors correctness.js
+// ponytail-on-stimulants: probe once at load; mirrors correctness.js
 let pythonCmd;
 function python() {
   if (pythonCmd) return pythonCmd;
@@ -29,7 +29,7 @@ try {
     .map(l => { const i = l.indexOf('='); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; }));
 } catch (_) { /* no .env — fine for --selftest */ }
 const KEY = process.env.OPENAI_API_KEY || kv.OPENAI_API_KEY;
-const SKILL = fs.readFileSync(path.join(ROOT, 'skills', 'ponytail', 'SKILL.md'), 'utf8');
+const SKILL = fs.readFileSync(path.join(ROOT, 'skills', 'ponytail-on-stimulants', 'SKILL.md'), 'utf8');
 
 // task = { name, prompt, names, arity, cases: [[argsArray, expected], ...], good, bad }
 const TASKS = [
@@ -178,7 +178,7 @@ if (process.argv.includes('--selftest')) {
 }
 
 (async () => {
-  const arms = { baseline: null, ponytail: SKILL };
+  const arms = { baseline: null, 'ponytail-on-stimulants': SKILL };
   const grid = {};
   for (const t of TASKS) {
     grid[t.name] = {};

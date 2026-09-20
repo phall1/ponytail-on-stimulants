@@ -1,29 +1,37 @@
 {
-  "name": "ponytail",
-  "version": "4.10.0",
-  "description": "Lazy senior dev mode. Forces the simplest, shortest solution that actually works: YAGNI, stdlib first, no unrequested abstractions.",
+  "name": "ponytail-on-stimulants",
+  "version": "0.1.0",
+  "description": "Minimal architecture. Maximal execution. Completion discipline for coding agents.",
   "author": {
-    "name": "Dietrich Gebert",
-    "url": "https://github.com/DietrichGebert"
+    "name": "phall1",
+    "url": "https://github.com/phall1"
   },
-  "homepage": "https://github.com/DietrichGebert/ponytail",
-  "repository": "https://github.com/DietrichGebert/ponytail",
+  "homepage": "https://github.com/phall1/ponytail-on-stimulants",
+  "repository": "https://github.com/phall1/ponytail-on-stimulants",
   "license": "MIT",
-  "keywords": ["yagni", "minimalism", "code-review", "productivity"],
+  "keywords": [
+    "yagni",
+    "minimalism",
+    "code-review",
+    "productivity"
+  ],
   "skills": "./skills/",
   "hooks": "./hooks/claude-codex-hooks.json",
   "interface": {
-    "displayName": "Ponytail",
-    "shortDescription": "Lazy senior developer mode",
-    "longDescription": "Prefer YAGNI, the standard library, native platform features, and the smallest correct implementation.",
-    "developerName": "Dietrich Gebert",
+    "displayName": "Ponytail on Stimulants",
+    "shortDescription": "Small design, complete execution",
+    "longDescription": "Choose the smallest sound architecture, finish mechanically implied work, verify proportionately, and perform a bounded adversarial completion pass.",
+    "developerName": "phall1",
     "category": "Productivity",
-    "capabilities": ["Instructions", "Lifecycle hooks"],
-    "websiteURL": "https://github.com/DietrichGebert/ponytail",
+    "capabilities": [
+      "Instructions",
+      "Lifecycle hooks"
+    ],
+    "websiteURL": "https://github.com/phall1/ponytail-on-stimulants",
     "defaultPrompt": [
-      "Use Ponytail mode for this task.",
-      "Review this diff for over-engineering.",
-      "Find the smallest correct implementation."
+      "Use full-send mode for this task.",
+      "Trace affected callers and finish the whole change.",
+      "Verify the result and perform an adversarial completion pass."
     ],
     "brandColor": "#111111",
     "composerIcon": "./assets/logo.png",

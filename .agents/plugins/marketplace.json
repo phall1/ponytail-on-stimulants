@@ -1,14 +1,14 @@
 {
-  "name": "ponytail",
+  "name": "ponytail-on-stimulants",
   "interface": {
-    "displayName": "Ponytail"
+    "displayName": "Ponytail on Stimulants"
   },
   "plugins": [
     {
-      "name": "ponytail",
+      "name": "ponytail-on-stimulants",
       "source": {
         "source": "url",
-        "url": "https://github.com/DietrichGebert/ponytail.git",
+        "url": "https://github.com/phall1/ponytail-on-stimulants.git",
         "ref": "main"
       },
       "policy": {

@@ -9,21 +9,21 @@ const path = require('path');
 
 const root = path.join(__dirname, '..');
 const REQUIRED_COMMAND_FILES = [
-  'ponytail.toml',
-  'ponytail-review.toml',
-  'ponytail-audit.toml',
-  'ponytail-debt.toml',
-  'ponytail-gain.toml',
-  'ponytail-help.toml',
+  'ponytail-on-stimulants.toml',
+  'ponytail-on-stimulants-review.toml',
+  'ponytail-on-stimulants-audit.toml',
+  'ponytail-on-stimulants-debt.toml',
+  'ponytail-on-stimulants-gain.toml',
+  'ponytail-on-stimulants-help.toml',
 ];
 
 function readJSON(relPath) {
   return JSON.parse(fs.readFileSync(path.join(root, relPath), 'utf8'));
 }
 
-test('copilot plugin command directory includes ponytail-debt', () => {
+test('copilot plugin command directory includes ponytail-on-stimulants-debt', () => {
   const manifest = readJSON('.github/plugin/plugin.json');
-  assert.equal(manifest.name, 'ponytail');
+  assert.equal(manifest.name, 'ponytail-on-stimulants');
   assert.equal(manifest.commands, 'commands/');
 
   for (const file of REQUIRED_COMMAND_FILES) {

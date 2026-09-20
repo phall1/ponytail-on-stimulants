@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-// ponytail — install or remove the Cursor hooks (hooks/cursor-hooks.json) in
-// ~/.cursor/hooks.json (default) or <cwd>/.cursor/hooks.json (--project),
-// merging with whatever hooks are already there. Only entries that run one of
-// ponytail's own hooks/ponytail-*.js scripts are added or removed; every other
-// hook stays as it was.
+// Ponytail on Stimulants — install or remove the fork's Cursor hooks in
+// ~/.cursor/hooks.json (default) or <cwd>/.cursor/hooks.json (--project).
+// Only entries that run ponytail-on-stimulants-*.js are owned; every other
+// hook, including upstream Ponytail hooks, stays as it was.
 //
 //   node scripts/cursor-hooks.js install [--project]
 //   node scripts/cursor-hooks.js uninstall [--project]
@@ -11,11 +10,11 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { isShellSafe } = require('../hooks/ponytail-config');
+const { isShellSafe } = require('../hooks/ponytail-on-stimulants-config');
 
 const ROOT = path.join(__dirname, '..');
 const TEMPLATE = path.join(ROOT, 'hooks', 'cursor-hooks.json');
-const PONYTAIL_HOOK = /ponytail-[\w-]+\.js/;
+const PONYTAIL_HOOK = /ponytail-on-stimulants-[\w-]+\.js/;
 
 function isPonytailHook(entry) {
   return Boolean(entry && typeof entry.command === 'string' && PONYTAIL_HOOK.test(entry.command));
@@ -46,20 +45,20 @@ function writeConfig(file, config) {
   fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\n', 'utf8');
 }
 
-// The template's PONYTAIL_DIR placeholder becomes this checkout's absolute
+// The template's PONYTAIL_ON_STIMULANTS_DIR placeholder becomes this checkout's absolute
 // path. Forward slashes run unchanged under cmd, PowerShell and bash, and the
 // same allowlist that guards the statusline snippet keeps shell metacharacters
 // out of the command string.
 function ponytailEntries() {
   const root = ROOT.replace(/\\/g, '/');
   if (!isShellSafe(root)) {
-    throw new Error('ponytail is checked out at a path with shell metacharacters (' + ROOT +
+    throw new Error('Ponytail on Stimulants is checked out at a path with shell metacharacters (' + ROOT +
       '); move it, or copy hooks/cursor-hooks.json by hand and quote the path for your shell');
   }
   const template = JSON.parse(fs.readFileSync(TEMPLATE, 'utf8'));
   const hooks = {};
   for (const [event, entries] of Object.entries(template.hooks)) {
-    hooks[event] = entries.map((entry) => ({ ...entry, command: entry.command.replace(/PONYTAIL_DIR/g, root) }));
+    hooks[event] = entries.map((entry) => ({ ...entry, command: entry.command.replace(/PONYTAIL_ON_STIMULANTS_DIR/g, root) }));
   }
   return hooks;
 }
@@ -77,7 +76,7 @@ function install(scope) {
   const file = hooksPath(scope);
   const config = readConfig(file);
   if (config.version === undefined) config.version = 1;
-  // Re-running replaces stale ponytail entries instead of duplicating them.
+  // Re-running replaces stale fork entries instead of duplicating them.
   stripPonytail(config);
   for (const [event, entries] of Object.entries(ponytailEntries())) {
     config.hooks[event] = [...(config.hooks[event] || []), ...entries];
@@ -86,7 +85,7 @@ function install(scope) {
   return file;
 }
 
-// Returns the file it changed, or null when there was nothing of ponytail's in it.
+// Returns the file it changed, or null when there was no fork-owned entry.
 function uninstall(scope) {
   const file = hooksPath(scope);
   if (!fs.existsSync(file)) return null;
@@ -96,7 +95,7 @@ function uninstall(scope) {
   if (JSON.stringify(config) === before) return null;
   const otherKeys = Object.keys(config).filter((k) => k !== 'version' && k !== 'hooks');
   if (Object.keys(config.hooks).length === 0 && otherKeys.length === 0) {
-    // Only ponytail lived here: drop the file rather than leave an empty husk.
+    // Only this fork lived here: drop the file rather than leave an empty husk.
     fs.unlinkSync(file);
   } else {
     writeConfig(file, config);
@@ -111,13 +110,13 @@ if (require.main === module) {
   try {
     if (action === 'install') {
       const file = install(scope);
-      console.log('Installed ponytail hooks in ' + file);
+      console.log('Installed Ponytail on Stimulants hooks in ' + file);
       console.log('Cursor reloads hooks.json on save; start a new chat to activate.');
     } else if (action === 'uninstall') {
       const file = uninstall(scope);
       console.log(file
-        ? 'Removed ponytail hooks from ' + file
-        : 'No ponytail hooks in ' + hooksPath(scope));
+        ? 'Removed Ponytail on Stimulants hooks from ' + file
+        : 'No Ponytail on Stimulants hooks in ' + hooksPath(scope));
     } else {
       console.error('usage: node scripts/cursor-hooks.js install|uninstall [--project]');
       process.exit(1);

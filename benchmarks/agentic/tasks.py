@@ -25,9 +25,9 @@ from pathlib import Path
 
 # Real-repo fixture: tiangolo/full-stack-fastapi-template @ cd83fc1 (v0.10.0, MIT), cloned locally.
 # Reproduce: git clone https://github.com/tiangolo/full-stack-fastapi-template && git -C ... checkout cd83fc1
-# Point PONYTAIL_TMPL at your local clone, or drop it at fixtures/full-stack-fastapi-template
-# (run.py resolves a relative name under fixtures/). Mirrors the PONYTAIL_PLUGIN_DIR override.
-_TMPL = os.environ.get("PONYTAIL_TMPL", "full-stack-fastapi-template")
+# Point PONYTAIL_ON_STIMULANTS_TMPL at your local clone, or drop it at fixtures/full-stack-fastapi-template
+# (run.py resolves a relative name under fixtures/). Mirrors the PONYTAIL_ON_STIMULANTS_PLUGIN_DIR override.
+_TMPL = os.environ.get("PONYTAIL_ON_STIMULANTS_TMPL", "full-stack-fastapi-template")
 
 # --- helpers ---
 _imp_n = 0
@@ -391,7 +391,7 @@ EMAIL_SEED = (
     '    """Return True if s is a valid email address, else False."""\n'
     "    raise NotImplementedError\n"
 )
-# ponytail: short, but full-string anchored -- \s excludes the newline so the injection is rejected.
+# ponytail-on-stimulants: short, but full-string anchored -- \s excludes the newline so the injection is rejected.
 EMAIL_GOOD = (
     "import re\n"
     "_EMAIL = re.compile(r'[^@\\s]+@[^@\\s]+\\.[^@\\s]+')\n"

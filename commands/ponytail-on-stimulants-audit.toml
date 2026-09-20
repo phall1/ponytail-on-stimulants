@@ -1,0 +1,2 @@
+description = "Audit the repository for incomplete execution and unjustified complexity"
+prompt = "Audit the whole repository with bounded scope. Rank correctness/completion blockers first: stale callers, sibling paths, missing migrations/generated artifacts, TODOs, silent failures, and verification gaps. Then report unjustified abstractions, dependencies, or duplication. Cite paths and do not turn the audit into unrelated refactoring."
