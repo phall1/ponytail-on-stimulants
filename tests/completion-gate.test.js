@@ -69,11 +69,8 @@ test('modes enforce zero, one, and two forced-pass caps', () => {
   assert.equal(maxContinuations('focused'), 0);
   assert.equal(maxContinuations('full-send'), 1);
   assert.equal(maxContinuations('feral'), 2);
-  assert.equal(maxContinuations('lite'), 0);
-  assert.equal(maxContinuations('full'), 1);
-  assert.equal(maxContinuations('ultra'), 2);
   assert.equal(maxContinuations('off'), 0);
-  assert.equal(maxContinuations('review'), 0);
+  assert.equal(maxContinuations('unsupported'), 1);
 });
 
 test('no mutation or tool evidence does not trigger a pass, even in a dirty worktree', () => {

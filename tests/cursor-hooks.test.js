@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Cursor adapter compatibility check (#817). The hooks must speak Cursor's
+// Cursor native-adapter contract check (#817). The hooks must speak Cursor's
 // hooks.json contract: camelCase events, JSON on stdout (empty stdout is a
 // no-op, raw text is a parse error), `additional_context` on sessionStart, and
 // `continue` plus `additional_context` on beforeSubmitPrompt. The installer must
@@ -121,8 +121,8 @@ test('sessionStart injects the default-level ruleset as additional_context and k
   const output = parse(run('ponytail-on-stimulants-activate.js', c.env, input));
   assert.deepEqual(Object.keys(output), ['additional_context']);
   assert.match(output.additional_context, /^PONYTAIL ON STIMULANTS ACTIVE — mode: feral/);
-  assert.match(output.additional_context, /aggressive reference search/, 'ultra row must survive the level filter');
-  assert.doesNotMatch(output.additional_context, /normal proportional verification/, 'lite row must be filtered out');
+  assert.match(output.additional_context, /aggressive reference search/, 'feral row must survive the mode filter');
+  assert.doesNotMatch(output.additional_context, /normal proportional verification/, 'focused row must be filtered out');
   assert.doesNotMatch(output.additional_context, /STATUSLINE SETUP NEEDED/, 'Cursor has no Claude statusline to nudge about');
   assert.equal(fs.readFileSync(c.flag, 'utf8'), 'feral');
   assert.equal(fs.existsSync(path.join(c.home, '.claude')), false, 'Cursor state must not land in ~/.claude');
@@ -152,7 +152,7 @@ test('beforeSubmitPrompt tracks /ponytail-on-stimulants commands and delivers th
 
   const sw = parse(run('ponytail-on-stimulants-mode-tracker.js', c.env, JSON.stringify({
     hook_event_name: 'beforeSubmitPrompt', conversation_id: 'conv-1',
-    prompt: '/ponytail-on-stimulants lite', attachments: [],
+    prompt: '/ponytail-on-stimulants focused', attachments: [],
   })));
   assert.equal(sw.continue, true, 'must never block the prompt');
   assert.equal(sw.user_message, undefined, 'Cursor shows user_message only for blocked prompts');
@@ -167,7 +167,7 @@ test('beforeSubmitPrompt tracks /ponytail-on-stimulants commands and delivers th
   assert.equal(fs.readFileSync(c.flag, 'utf8'), 'focused');
 
   // /ponytail-on-stimulants default persists the default without touching the session level.
-  const def = parse(run('ponytail-on-stimulants-mode-tracker.js', c.env, JSON.stringify({ prompt: '/ponytail-on-stimulants default ultra' })));
+  const def = parse(run('ponytail-on-stimulants-mode-tracker.js', c.env, JSON.stringify({ prompt: '/ponytail-on-stimulants default feral' })));
   assert.equal(def.continue, true);
   assert.match(def.additional_context, /PONYTAIL ON STIMULANTS DEFAULT SET — new sessions start in feral/);
   assert.equal(JSON.parse(fs.readFileSync(path.join(c.home, '.config', 'ponytail-on-stimulants', 'config.json'), 'utf8')).defaultMode, 'feral');
@@ -185,10 +185,10 @@ test('beforeSubmitPrompt tracks /ponytail-on-stimulants commands and delivers th
 
   // Ordinary prompts produce no output at all: Cursor treats empty stdout as "carry on".
   writeFlag(c, 'full-send');
-  const plain = run('ponytail-on-stimulants-mode-tracker.js', c.env, JSON.stringify({ prompt: 'add a normal mode toggle next to dark mode' }));
+  const plain = run('ponytail-on-stimulants-mode-tracker.js', c.env, JSON.stringify({ prompt: 'add a theme toggle next to dark mode' }));
   assert.equal(plain.status, 0, plain.stderr);
   assert.equal(plain.stdout, '');
-  assert.equal(fs.readFileSync(c.flag, 'utf8'), 'full-send', 'incidental "normal mode" must not turn ponytail-on-stimulants off');
+  assert.equal(fs.readFileSync(c.flag, 'utf8'), 'full-send');
 });
 
 test('with the always-on rule in the workspace the hooks step back instead of duplicating the ruleset', () => {
@@ -203,7 +203,7 @@ test('with the always-on rule in the workspace the hooks step back instead of du
   assert.doesNotMatch(start.additional_context, /PONYTAIL ON STIMULANTS ACTIVE/, 'no second copy of the ruleset');
   assert.equal(fs.existsSync(c.flag), false, 'no mode flag while the rule owns the ruleset');
 
-  for (const prompt of ['/ponytail-on-stimulants ultra', '/ponytail-on-stimulants off', 'normal mode', '/ponytail-on-stimulants']) {
+  for (const prompt of ['/ponytail-on-stimulants feral', '/ponytail-on-stimulants off', 'stop ponytail on stimulants', '/ponytail-on-stimulants']) {
     const out = parse(run('ponytail-on-stimulants-mode-tracker.js', c.env, JSON.stringify({ prompt })));
     assert.equal(out.continue, true);
     assert.match(out.additional_context, /always-on Cursor rule/, `${prompt} must answer with the rule notice`);

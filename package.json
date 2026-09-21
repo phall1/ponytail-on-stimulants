@@ -1,8 +1,8 @@
 {
   "name": "ponytail-on-stimulants",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Minimal architecture. Maximal execution. Completion discipline for coding agents.",
-  "keywords": ["opencode-plugin", "opencode", "coding-agent", "completion", "pi-package", "pi", "skills", "qoder"],
+  "keywords": ["agent-plugin", "opencode-plugin", "opencode", "coding-agent", "completion", "mcp", "pi-package", "pi", "skills", "qoder"],
   "license": "MIT",
   "author": {
     "name": "phall1",
@@ -25,11 +25,13 @@
   "main": "./.opencode/plugins/ponytail-on-stimulants.mjs",
   "exports": {
     ".": "./.opencode/plugins/ponytail-on-stimulants.mjs",
-    "./plugin": "./.opencode/plugins/ponytail-on-stimulants.mjs",
     "./completion-gate": "./completion-gate/index.js",
     "./completion-gate/jev": "./completion-gate/jev.js"
   },
   "files": [
+    "plugin.json",
+    "mcp.json",
+    "mcp/",
     "AGENTS.md",
     "completion-gate/",
     "hooks/",
@@ -46,7 +48,7 @@
   ],
   "scripts": {
     "check": "node scripts/check-rule-copies.js && node scripts/check-versions.js",
-    "test": "node --test tests/*.test.js && npm test --prefix pi-extension && npm test --prefix ponytail-on-stimulants-mcp",
+    "test": "node --test tests/*.test.js && npm test --prefix pi-extension",
     "test:completion": "node --test tests/completion-gate.test.js && node benchmarks/completion/selftest.js && node benchmarks/completion/evaluate.js --selftest"
   },
   "pi": {

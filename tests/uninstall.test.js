@@ -34,7 +34,7 @@ fs.writeFileSync(upstreamFlagPath, 'full');
 const configDir = path.join(temp, 'config-home', 'ponytail-on-stimulants');
 fs.mkdirSync(configDir, { recursive: true });
 const configPath = path.join(configDir, 'config.json');
-fs.writeFileSync(configPath, JSON.stringify({ defaultMode: 'ultra' }));
+fs.writeFileSync(configPath, JSON.stringify({ defaultMode: 'feral' }));
 
 const settingsPath = path.join(claudeDir, 'settings.json');
 fs.writeFileSync(settingsPath, JSON.stringify({
@@ -46,7 +46,7 @@ fs.writeFileSync(settingsPath, JSON.stringify({
 const cursorDir = path.join(home, '.cursor');
 fs.mkdirSync(cursorDir, { recursive: true });
 const cursorFlagPath = path.join(cursorDir, '.ponytail-on-stimulants-active');
-fs.writeFileSync(cursorFlagPath, 'lite');
+fs.writeFileSync(cursorFlagPath, 'focused');
 const cursorHooksPath = path.join(cursorDir, 'hooks.json');
 fs.writeFileSync(cursorHooksPath, JSON.stringify({
   version: 1,

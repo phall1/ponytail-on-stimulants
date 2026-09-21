@@ -28,7 +28,6 @@ Never simplify away trust-boundary input validation, error handling that prevent
 - **full-send** (default): broader affected-path tracing, implied work, proportionate verification, explicit adversarial pass.
 - **feral:** full-send plus aggressive caller/reference search, stronger edge inspection, broader reasonable verification, and a strong presumption the first completion is incomplete. Scope stays bounded.
 
-Input aliases `lite`, `full`, and `ultra` map to `focused`, `full-send`, and `feral`.
 
 ## Output
 

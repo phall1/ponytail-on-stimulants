@@ -25,10 +25,6 @@ const COMMANDS = new Set([
   '/ponytail-on-stimulants',
   '/ponytail-on-stimulants:ponytail-on-stimulants',
 ]);
-const REVIEW_COMMANDS = new Set([
-  '/ponytail-on-stimulants-review',
-  '/ponytail-on-stimulants:ponytail-on-stimulants-review',
-]);
 
 function commandParts(prompt) {
   const parts = prompt.split(/\s+/);
@@ -45,7 +41,7 @@ function parsePrompt() {
     command,
     argument,
     defaultArgument,
-    isCommand: COMMANDS.has(command) || REVIEW_COMMANDS.has(command),
+    isCommand: COMMANDS.has(command),
   };
 }
 
@@ -76,7 +72,6 @@ function writeDefault(argument) {
 }
 
 function requestedMode(context) {
-  if (REVIEW_COMMANDS.has(context.command)) return { mode: 'review', reportOnly: false };
   if (!context.argument || context.argument === 'status') {
     return { mode: readMode() || getDefaultMode(), reportOnly: true };
   }
@@ -103,7 +98,7 @@ function activateMode(mode) {
 
 function handleCommand(context) {
   if (!context.isCommand) return { modeSwitched: false, deactivated: false };
-  if (context.argument === 'default' && !REVIEW_COMMANDS.has(context.command)) {
+  if (context.argument === 'default') {
     writeDefault(context.defaultArgument);
     return { terminal: true, modeSwitched: false, deactivated: false };
   }

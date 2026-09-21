@@ -27,11 +27,18 @@ test('npm package ships the advertised cleanup script', () => {
   );
 });
 
-test('npm artifact includes Pi runtime but excludes development tests', () => {
+test('npm artifact includes the Agent Plugins core and native runtimes but excludes tests', () => {
   const result = spawnSync('npm', ['pack', '--dry-run', '--json'], { cwd: root, encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   const files = JSON.parse(result.stdout)[0].files.map((entry) => entry.path);
-  assert.ok(files.includes('pi-extension/index.js'));
-  assert.ok(files.includes('completion-gate/index.js'));
-  assert.equal(files.some((file) => file.startsWith('pi-extension/test/')), false);
+  for (const required of [
+    'plugin.json',
+    'mcp.json',
+    'mcp/server.js',
+    'skills/ponytail-on-stimulants/SKILL.md',
+    'pi-extension/index.js',
+    'completion-gate/index.js',
+  ]) assert.ok(files.includes(required), `${required} missing from npm artifact`);
+  assert.equal(files.some((file) => file.includes('/test/')), false);
+  assert.equal(files.some((file) => file.startsWith('tests/')), false);
 });

@@ -13,8 +13,6 @@ from typing import Any, Callable
 
 DEFAULT_MODE = "full-send"
 RUNTIME_MODES = {"off", "focused", "full-send", "feral"}
-MODE_ALIASES = {"lite": "focused", "full": "full-send", "ultra": "feral"}
-CONFIG_MODES = RUNTIME_MODES | {"review"}
 SKILL_COMMANDS = {
     "ponytail-on-stimulants-review": "Review the current diff for unnecessary complexity and unfinished work.",
     "ponytail-on-stimulants-audit": "Audit the repo for incomplete execution and unjustified complexity.",
@@ -26,25 +24,14 @@ SKILL_COMMANDS = {
 ROOT = Path(__file__).resolve().parent
 SKILLS_DIR = ROOT / "skills"
 MAIN_SKILL = SKILLS_DIR / "ponytail-on-stimulants" / "SKILL.md"
-REVIEW_SKILL = SKILLS_DIR / "ponytail-on-stimulants-review" / "SKILL.md"
 _current_mode = None
 
 
-def _canonical_mode(mode: str | None) -> str | None:
+def _normalize_runtime_mode(mode: str | None) -> str | None:
     if not isinstance(mode, str):
         return None
     normalized = mode.strip().lower()
-    return MODE_ALIASES.get(normalized, normalized)
-
-
-def _normalize_runtime_mode(mode: str | None) -> str | None:
-    mode = _canonical_mode(mode)
-    return mode if mode in RUNTIME_MODES else None
-
-
-def _normalize_config_mode(mode: str | None) -> str | None:
-    mode = _canonical_mode(mode)
-    return mode if mode in CONFIG_MODES else None
+    return normalized if normalized in RUNTIME_MODES else None
 
 
 def _config_dir() -> Path:
@@ -122,16 +109,10 @@ def _fallback_instructions(mode: str) -> str:
 
 def build_injected_context(mode: str | None = None) -> str:
     """Return mode-filtered completion context for a Hermes LLM turn."""
-    configured = _normalize_config_mode(mode) or _default_mode()
+    configured = _normalize_runtime_mode(mode) or _default_mode()
     if configured == "off":
         return ""
-    if configured == "review":
-        try:
-            body = REVIEW_SKILL.read_text(encoding="utf-8")
-            return f"PONYTAIL ON STIMULANTS ACTIVE — mode: review\n\n{_strip_frontmatter(body)}"
-        except OSError:
-            return "PONYTAIL ON STIMULANTS ACTIVE — mode: review. Review complexity and unfinished work."
-    effective = _normalize_runtime_mode(configured) or DEFAULT_MODE
+    effective = configured
     try:
         body = MAIN_SKILL.read_text(encoding="utf-8")
         return f"PONYTAIL ON STIMULANTS ACTIVE — mode: {effective}\n\n{_filter_skill_body_for_mode(body, effective)}"
@@ -172,7 +153,7 @@ def rewrite_gateway_command(event: Any = None, gateway: Any = None, **_: Any) ->
     if not text.startswith("/"):
         return None
     head, _, rest = text[1:].partition(" ")
-    command = head.replace("_", "-").lower()
+    command = head.lower()
     if command not in SKILL_COMMANDS or _slash_access_denied(event, gateway, command):
         return None
     return {"action": "rewrite", "text": _skill_prompt(command, rest)}

@@ -49,5 +49,3 @@ End with `completion: complete|incomplete; net: -<N> lines possible.` If there a
 ## Boundaries
 
 Review the requested change and its directly affected paths, not unrelated repository debt. Correctness, security, accessibility, trust-boundary validation, and data-loss prevention are in scope when the diff changes or omits them; never recommend simplifying those protections away. A focused runnable check is completion evidence, not bloat. This skill lists findings and does not apply fixes.
-
-"stop ponytail-on-stimulants-review" or "normal mode": revert to normal review behavior.

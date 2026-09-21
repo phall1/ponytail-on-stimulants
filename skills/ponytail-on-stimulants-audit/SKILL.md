@@ -40,5 +40,3 @@ End with `completion blockers: <N>; net: -<L> lines, -<D> deps possible.` No fin
 ## Boundaries
 
 Audit the repository for system-level patterns without inventing a redesign or treating unrelated style preferences as findings. Correctness and safety are in scope; never recommend removing necessary validation, data-loss prevention, security, or accessibility behavior. Lists findings, applies nothing. One-shot.
-
-"stop ponytail-on-stimulants-audit" or "normal mode" to revert.

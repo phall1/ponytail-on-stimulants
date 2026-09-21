@@ -1,3 +1,20 @@
 {
-  "name": "ponytail-on-stimulants"
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "ponytail-on-stimulants",
+  "version": "0.2.0",
+  "description": "Minimal architecture. Maximal execution. Completion discipline for coding agents.",
+  "author": {
+    "name": "phall1",
+    "url": "https://github.com/phall1"
+  },
+  "homepage": "https://github.com/phall1/ponytail-on-stimulants",
+  "repository": "https://github.com/phall1/ponytail-on-stimulants",
+  "license": "MIT",
+  "keywords": [
+    "agent-plugin",
+    "coding-agent",
+    "completion",
+    "mcp",
+    "skills"
+  ]
 }

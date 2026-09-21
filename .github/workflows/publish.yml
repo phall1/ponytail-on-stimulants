@@ -26,7 +26,6 @@ jobs:
           git fetch --no-tags origin main
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
       - run: pip install pandas==2.3.3
-      - run: npm install --prefix ponytail-on-stimulants-mcp
       - run: npm run check
       - run: npm test
       - run: npm run test:completion

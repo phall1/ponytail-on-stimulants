@@ -18,7 +18,7 @@ One-shot reference; do not change mode or state.
 | **feral** | `/ponytail-on-stimulants feral` | Stronger caller/edge search and broader reasonable verification; scope remains bounded. |
 | **off** | `/ponytail-on-stimulants off` | Disable the fork's injected behavior. |
 
-`lite`, `full`, and `ultra` are accepted aliases for `focused`, `full-send`, and `feral`. Set the default with `/ponytail-on-stimulants default <mode>` or `PONYTAIL_ON_STIMULANTS_DEFAULT_MODE`.
+Set the default with `/ponytail-on-stimulants default <mode>` or `PONYTAIL_ON_STIMULANTS_DEFAULT_MODE`.
 
 ## Skills
 
@@ -32,4 +32,4 @@ One-shot reference; do not change mode or state.
 
 Pi performs a bounded deterministic completion pass after qualifying coding turns: zero forced passes in focused, one in full-send, two in feral. Optional Jev judgment is disabled by default and never replaces deterministic checks.
 
-Stop the fork with `stop ponytail on stimulants` or `stop stimulants`.
+Stop the fork with `stop ponytail on stimulants`.

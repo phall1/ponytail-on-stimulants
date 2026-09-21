@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { getClaudeDir, normalizePersistedMode } = require('./ponytail-on-stimulants-config');
+const { getClaudeDir, normalizeMode } = require('./ponytail-on-stimulants-config');
 
 const STATE_FILE = '.ponytail-on-stimulants-active';
 
@@ -26,7 +26,7 @@ if (isCursor) stateDir = path.join(os.homedir(), '.cursor');
 const statePath = path.join(stateDir, STATE_FILE);
 
 function setMode(mode) {
-  const normalized = normalizePersistedMode(mode);
+  const normalized = normalizeMode(mode);
   if (!normalized) return false;
   fs.mkdirSync(path.dirname(statePath), { recursive: true });
   fs.writeFileSync(statePath, normalized);
@@ -39,7 +39,7 @@ function clearMode() {
 
 function readMode() {
   try {
-    return normalizePersistedMode(fs.readFileSync(statePath, 'utf8').trim());
+    return normalizeMode(fs.readFileSync(statePath, 'utf8').trim());
   } catch (_) {
     return null;
   }

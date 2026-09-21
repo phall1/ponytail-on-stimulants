@@ -6,6 +6,7 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const semver = /^\d+\.\d+\.\d+$/;
 const jsonFiles = [
+  'plugin.json',
   '.claude-plugin/plugin.json',
   '.codex-plugin/plugin.json',
   '.devin-plugin/plugin.json',
@@ -13,7 +14,6 @@ const jsonFiles = [
   '.qoder-plugin/plugin.json',
   'gemini-extension.json',
   'package.json',
-  'ponytail-on-stimulants-mcp/package.json',
 ];
 
 function jsonVersion(relative) {

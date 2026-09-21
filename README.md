@@ -6,7 +6,7 @@ Ponytail taught coding agents to stop over-engineering. Ponytail on Stimulants t
 
 Same senior engineer. Now the ticket is actually getting closed.
 
-This project is a maintainable soft fork of [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail). It keeps Ponytail's YAGNI, reuse, standard-library, native-platform, portability, and safety discipline, then adds an operational completion contract:
+This project is a maintainable soft fork of [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail). It is packaged as an [Agent Plugins v1.0.0](https://agent-plugins.org/specification) plugin and keeps Ponytail's YAGNI, reuse, standard-library, native-platform, portability, and safety discipline while adding an operational completion contract:
 
 1. understand the repository and affected flow;
 2. choose the smallest sound architecture;
@@ -23,9 +23,7 @@ This project is a maintainable soft fork of [DietrichGebert/ponytail](https://gi
 | `focused` | Complete the requested path with normal proportional verification. |
 | `full-send` | Trace affected paths, do implied work, verify, and run an explicit adversarial pass. Default. |
 | `feral` | Stronger caller/edge search and broader reasonable verification; scope remains bounded. |
-| `off` | Disable injected behavior. |
-
-`lite`, `full`, and `ultra` are accepted input aliases for `focused`, `full-send`, and `feral`.
+| `off` | Disable injected behavior in native adapters. |
 
 ## Operational completion gate
 
@@ -35,7 +33,7 @@ The Pi adapter demonstrates the stronger loop end to end. After a qualifying cod
 - `full-send`: 1 forced pass
 - `feral`: at most 2 forced passes
 
-Human input resets the counter; extension follow-ups do not. Hard caps, off/review modes, and fail-open error handling prevent infinite agency. Other hosts still receive the complete prompt contract; they do not pretend to support a continuation lifecycle they lack.
+Human input resets the counter; extension follow-ups do not. Hard caps, the off state, and fail-open error handling prevent infinite agency. Other hosts still receive the complete prompt contract; they do not pretend to support a continuation lifecycle they lack.
 
 ### Experimental Jev judge
 
@@ -56,6 +54,19 @@ Optional settings:
 Missing credentials, timeout, transport errors, service errors, and malformed responses fail open. Jev is advisory: its judgment is shown to the coding model and never starts or suppresses execution directly. When enabled, the adapter sends only request/response length and claim flags, changed paths, tool-result fingerprints, and aggregate evidence to TypeSafe. It does not send task text, assistant-response text, file contents, tool output, or raw command text. Changed paths and fingerprints can still be sensitive metadata, so leave Jev disabled when repository metadata must not leave the machine. Core behavior has no TypeSafe dependency.
 
 ## Install
+
+### Agent Plugins v1.0.0
+
+Install this repository or its npm artifact with an Agent Plugins v1.0.0 client. The portable package uses the fixed layout:
+
+- `plugin.json` — canonical closed manifest;
+- `skills/*/SKILL.md` — discoverable Agent Skills;
+- `mcp.json` — stdio server declaration;
+- `mcp/server.js` — dependency-free Node server exposing the `ponytail-on-stimulants` prompt and `ponytail_on_stimulants_instructions` tool.
+
+The MCP server runs directly from an extracted package and requires no package-local dependency installation. It accepts only `focused`, `full-send`, and `feral`.
+
+The sections below cover current native adapters for client behavior outside the portable Agent Plugins core.
 
 ### Pi
 
@@ -148,12 +159,11 @@ Default-mode resolution:
 
 Runtime flags and config paths are distinct from upstream Ponytail, so both can be installed together. Commands, skills, plugin IDs, rule filenames, hook filenames, status keys, MCP identity, and uninstall matching are also fork-specific.
 
-Pi persists mode per session. Legacy file-hook hosts preserve a selected mode across resume/compact events but share one fork-specific mode file per host profile; a fresh startup resets it to the configured default. Concurrent conversations in those hosts can therefore observe the most recent mode switch. This is an inherited adapter limitation, not a claim of per-session isolation.
+Pi persists mode per session. File-hook native adapters preserve a selected mode across resume/compact events but share one fork-specific mode file per host profile; a fresh startup resets it to the configured default. Concurrent conversations in those hosts can therefore observe the most recent mode switch. This is an adapter limitation, not a claim of per-session isolation.
 
 ## Development
 
 ```sh
-npm install --prefix ponytail-on-stimulants-mcp
 node scripts/build-openclaw-skills.js
 npm run check
 npm test

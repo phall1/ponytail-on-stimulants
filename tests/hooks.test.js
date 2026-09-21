@@ -24,14 +24,13 @@ function run(script, { env = {}, input = '', args = [] } = {}) {
   });
 }
 
-test('config canonicalizes modes and legacy aliases', () => {
+test('config accepts only canonical runtime modes', () => {
   assert.equal(config.normalizeMode('focused'), 'focused');
   assert.equal(config.normalizeMode('full-send'), 'full-send');
   assert.equal(config.normalizeMode('feral'), 'feral');
-  assert.equal(config.normalizeMode('lite'), 'focused');
-  assert.equal(config.normalizeMode('full'), 'full-send');
-  assert.equal(config.normalizeMode('ultra'), 'feral');
-  assert.equal(config.normalizeMode('bogus'), null);
+  assert.equal(config.normalizeMode('off'), 'off');
+  assert.equal(config.normalizeMode('maximum'), null);
+  assert.equal(config.normalizeMode('review'), null);
 });
 
 test('instruction builder filters mode-specific rows and uses fork identity', () => {
@@ -46,7 +45,7 @@ test('Claude activation writes fork-specific state and emits canonical default',
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-on-stimulants-hook-'));
   try {
     const result = run('ponytail-on-stimulants-activate.js', {
-      env: { HOME: home, CLAUDE_CONFIG_DIR: path.join(home, '.claude'), PONYTAIL_ON_STIMULANTS_DEFAULT_MODE: 'ultra' },
+      env: { HOME: home, CLAUDE_CONFIG_DIR: path.join(home, '.claude'), PONYTAIL_ON_STIMULANTS_DEFAULT_MODE: 'feral' },
       args: ['--reset'],
     });
     assert.equal(result.status, 0, result.stderr);
@@ -76,7 +75,7 @@ test('mode tracker persists canonical mode, reports status, and turns off', () =
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-on-stimulants-track-'));
   const env = { HOME: home, CLAUDE_CONFIG_DIR: path.join(home, '.claude') };
   try {
-    let result = run('ponytail-on-stimulants-mode-tracker.js', { env, input: JSON.stringify({ prompt: '/ponytail-on-stimulants ultra' }) });
+    let result = run('ponytail-on-stimulants-mode-tracker.js', { env, input: JSON.stringify({ prompt: '/ponytail-on-stimulants feral' }) });
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /^PONYTAIL ON STIMULANTS MODE CHANGED — mode: feral/);
     assert.match(result.stdout, /^\| \*\*feral\*\*/m);

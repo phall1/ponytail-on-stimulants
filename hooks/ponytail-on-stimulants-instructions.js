@@ -3,10 +3,9 @@
 
 const fs = require('fs');
 const path = require('path');
-const { DEFAULT_MODE, normalizeMode, normalizePersistedMode } = require('./ponytail-on-stimulants-config');
+const { DEFAULT_MODE, normalizeMode } = require('./ponytail-on-stimulants-config');
 
 const SKILL_PATH = path.join(__dirname, '..', 'skills', 'ponytail-on-stimulants', 'SKILL.md');
-const REVIEW_SKILL_PATH = path.join(__dirname, '..', 'skills', 'ponytail-on-stimulants-review', 'SKILL.md');
 
 function stripFrontmatter(body) {
   return String(body || '').replace(/^---[\s\S]*?---\s*/, '');
@@ -40,17 +39,7 @@ function getFallbackInstructions(mode) {
 }
 
 function getPonytailInstructions(mode) {
-  const configuredMode = normalizePersistedMode(mode) || DEFAULT_MODE;
-  if (configuredMode === 'review') {
-    try {
-      return `PONYTAIL ON STIMULANTS ACTIVE — mode: review\n\n` +
-        stripFrontmatter(fs.readFileSync(REVIEW_SKILL_PATH, 'utf8'));
-    } catch (_) {
-      return 'PONYTAIL ON STIMULANTS ACTIVE — mode: review. Review the current diff for unfinished work and unnecessary complexity.';
-    }
-  }
-
-  const effectiveMode = normalizeMode(configuredMode) || DEFAULT_MODE;
+  const effectiveMode = normalizeMode(mode) || DEFAULT_MODE;
   try {
     return `PONYTAIL ON STIMULANTS ACTIVE — mode: ${effectiveMode}\n\n` +
       filterSkillBodyForMode(fs.readFileSync(SKILL_PATH, 'utf8'), effectiveMode);

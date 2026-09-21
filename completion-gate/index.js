@@ -4,12 +4,10 @@ const crypto = require('crypto');
 
 const MODE_POLICIES = Object.freeze({
   off: { maxContinuations: 0 },
-  review: { maxContinuations: 0 },
   focused: { maxContinuations: 0 },
   'full-send': { maxContinuations: 1 },
   feral: { maxContinuations: 2 },
 });
-const MODE_ALIASES = Object.freeze({ lite: 'focused', full: 'full-send', ultra: 'feral' });
 
 const MUTATION_TOOLS = new Set(['edit', 'write']);
 const SEARCH_TOOLS = new Set(['grep', 'find', 'read', 'ls']);
@@ -213,8 +211,7 @@ async function collectGitEvidence(exec, cwd) {
 }
 
 function maxContinuations(mode) {
-  const canonical = MODE_ALIASES[mode] || mode;
-  return (MODE_POLICIES[canonical] || MODE_POLICIES['full-send']).maxContinuations;
+  return (MODE_POLICIES[mode] || MODE_POLICIES['full-send']).maxContinuations;
 }
 
 function shouldRunCompletionPass(mode, state, evidence = {}) {

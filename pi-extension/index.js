@@ -8,7 +8,6 @@ const {
   getQuietStartup,
   getHideStatus,
   normalizeMode,
-  normalizePersistedMode,
   isDeactivationCommand,
   writeDefaultMode,
 } = require('../hooks/ponytail-on-stimulants-config.js');
@@ -39,13 +38,12 @@ const MODE_ENTRY = 'ponytail-on-stimulants-mode';
 const MODE_LIST = RUNTIME_MODES.join('|');
 
 export function resolveSessionMode(entries, fallbackMode = DEFAULT_MODE) {
-  const normalizedFallback = normalizePersistedMode(fallbackMode);
-  const fallback = normalizedFallback === null ? DEFAULT_MODE : normalizedFallback;
+  const fallback = normalizeMode(fallbackMode) || DEFAULT_MODE;
   if (!Array.isArray(entries)) return fallback;
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     const entry = entries[index];
     if (!entry || entry.type !== 'custom' || entry.customType !== MODE_ENTRY) continue;
-    const mode = normalizePersistedMode(entry.data && entry.data.mode);
+    const mode = normalizeMode(entry.data && entry.data.mode);
     if (mode) return mode;
   }
   return fallback;
@@ -131,7 +129,7 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
   }
 
   function setMode(mode, ctx) {
-    const normalized = normalizePersistedMode(mode);
+    const normalized = normalizeMode(mode);
     if (!normalized) return;
     currentMode = normalized;
     pi.appendEntry(MODE_ENTRY, { mode: normalized });
@@ -139,7 +137,7 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
     ctx?.ui?.notify?.(`Ponytail on Stimulants mode set to ${normalized}.`, 'info');
   }
 
-  function sendAlias(skillName, args, ctx) {
+  function sendSkillCommand(skillName, args, ctx) {
     const tail = String(args || '').trim();
     const message = tail ? `${skillName} ${tail}` : skillName;
     if (ctx?.isIdle?.() === false) {
@@ -180,7 +178,7 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
   }
 
   pi.registerCommand(COMMAND, {
-    description: `Set mode: ${MODE_LIST}. Legacy aliases: lite|full|ultra. Commands: status, default <mode>`,
+    description: `Set mode: ${MODE_LIST}. Commands: status, default <mode>`,
     handler: handleCommand,
   });
 
@@ -188,7 +186,7 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
     const name = `${COMMAND}-${suffix}`;
     pi.registerCommand(name, {
       description: `Run /skill:${name}`,
-      handler: (args, ctx) => sendAlias(`/skill:${name}`, args, ctx),
+      handler: (args, ctx) => sendSkillCommand(`/skill:${name}`, args, ctx),
     });
   }
 

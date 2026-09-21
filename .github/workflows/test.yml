@@ -20,8 +20,6 @@ jobs:
           python-version: '3.12'
       - name: Install Python deps for inherited correctness checks
         run: pip install pandas==2.3.3
-      - name: Install MCP deps
-        run: npm install --prefix ponytail-on-stimulants-mcp
       - name: Check generated rules and versions
         run: npm run check
       - name: Run tests

@@ -7,39 +7,17 @@ const os = require('os');
 
 const DEFAULT_MODE = 'full-send';
 const RUNTIME_MODES = ['off', 'focused', 'full-send', 'feral'];
-const VALID_MODES = [...RUNTIME_MODES, 'review'];
-const MODE_ALIASES = {
-  lite: 'focused',
-  full: 'full-send',
-  ultra: 'feral',
-};
-
-function canonicalMode(mode) {
-  if (typeof mode !== 'string') return null;
-  const normalized = mode.trim().toLowerCase();
-  return MODE_ALIASES[normalized] || normalized;
-}
 
 function normalizeMode(mode) {
-  const normalized = canonicalMode(mode);
+  if (typeof mode !== 'string') return null;
+  const normalized = mode.trim().toLowerCase();
   return RUNTIME_MODES.includes(normalized) ? normalized : null;
-}
-
-function normalizeConfigMode(mode) {
-  const normalized = canonicalMode(mode);
-  return VALID_MODES.includes(normalized) ? normalized : null;
-}
-
-function normalizePersistedMode(mode) {
-  return normalizeMode(mode) || normalizeConfigMode(mode);
 }
 
 function isDeactivationCommand(text) {
   const command = String(text || '').trim().toLowerCase().replace(/[.!?\s]+$/, '');
   return command === 'stop ponytail on stimulants' ||
-    command === 'stop ponytail-on-stimulants' ||
-    command === 'stop stimulants' ||
-    command === 'normal mode';
+    command === 'stop ponytail-on-stimulants';
 }
 
 // Only embed ordinary paths in shell snippets. A hostile clone path falls back
@@ -113,9 +91,7 @@ function writeDefaultMode(mode) {
 
 module.exports = {
   DEFAULT_MODE,
-  MODE_ALIASES,
   RUNTIME_MODES,
-  VALID_MODES,
   getDefaultMode,
   getConfigDir,
   getConfigPath,
@@ -124,8 +100,6 @@ module.exports = {
   getQuietStartup,
   isShellSafe,
   normalizeMode,
-  normalizeConfigMode,
-  normalizePersistedMode,
   isDeactivationCommand,
   writeDefaultMode,
 };

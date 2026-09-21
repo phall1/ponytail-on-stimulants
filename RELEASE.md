@@ -3,11 +3,10 @@
 Releases are deliberate; the fork never publishes under an upstream identity.
 
 1. Confirm `UPSTREAM.md` records the current reconciled upstream commit/version.
-2. Choose a fork semver and update every manifest checked by `node scripts/check-versions.js`, including `plugin.yaml`.
+2. Choose a fork semver and update every manifest checked by `node scripts/check-versions.js`, including canonical `plugin.json` and `plugin.yaml`.
 3. Regenerate derived skills with `node scripts/build-openclaw-skills.js`.
 4. Run:
    ```sh
-   npm install --prefix ponytail-on-stimulants-mcp
    npm run check
    npm test
    npm run test:completion
@@ -15,7 +14,7 @@ Releases are deliberate; the fork never publishes under an upstream identity.
    python3 benchmarks/agentic/complete.py --selftest-offline
    npm pack --dry-run
    ```
-5. Inspect the package contents, final diff, repository status, README install commands, fork IDs, and MIT attribution.
+5. Inspect the package contents, final diff, repository status, README install commands, fork IDs, MIT attribution, Agent Plugins manifest, fixed-layout skills, and packed-artifact MCP smoke coverage.
 6. Confirm no current public metadata points at `DietrichGebert/ponytail` except explicit attribution/upstream links.
 7. Confirm `origin` is the owned fork (`git remote get-url origin` must be `https://github.com/phall1/ponytail-on-stimulants.git` or its SSH equivalent) and that `main` tracks `origin/main`. Never push release refs through the canonical `upstream` remote.
 8. Configure npm trusted publishing for package `ponytail-on-stimulants` and this repository before the first publish.

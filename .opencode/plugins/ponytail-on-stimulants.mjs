@@ -20,7 +20,6 @@ const { getPonytailInstructions } = require('../../hooks/ponytail-on-stimulants-
 const {
   getDefaultMode,
   normalizeMode,
-  normalizePersistedMode,
   writeDefaultMode,
 } = require('../../hooks/ponytail-on-stimulants-config');
 const { parseCommandFile } = require('./ponytail-on-stimulants-frontmatter.cjs');
@@ -34,7 +33,7 @@ const statePath = path.join(
 
 function readMode() {
   try {
-    return normalizePersistedMode(fs.readFileSync(statePath, 'utf8').trim()) || getDefaultMode();
+    return normalizeMode(fs.readFileSync(statePath, 'utf8').trim()) || getDefaultMode();
   } catch (e) {
     return getDefaultMode();
   }

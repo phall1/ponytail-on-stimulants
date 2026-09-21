@@ -68,10 +68,10 @@ test('registers only fork-namespaced commands and status key', async () => {
   assert.equal(h.handlers.has('agent_settled'), false, 'continuations must queue before Pi emits public settlement');
 });
 
-test('legacy alias input persists a canonical fork session entry', async () => {
+test('canonical mode input persists a fork session entry', async () => {
   const h = harness();
   await start(h);
-  await h.commands.get('ponytail-on-stimulants').handler('ultra', h.ctx);
+  await h.commands.get('ponytail-on-stimulants').handler('feral', h.ctx);
   assert.deepEqual(h.appended.at(-1), {
     customType: 'ponytail-on-stimulants-mode',
     data: { mode: 'feral' },
@@ -137,14 +137,12 @@ test('feral queues at most two passes', async () => {
   assert.equal(h.sent.length, 2);
 });
 
-test('focused and review modes never force a continuation', async () => {
-  for (const mode of ['focused', 'review']) {
-    const h = harness({ entries: [{ type: 'custom', customType: 'ponytail-on-stimulants-mode', data: { mode } }] });
-    await start(h);
-    await beginExecution(h);
-    await h.handlers.get('agent_end')({}, h.ctx);
-    assert.equal(h.sent.length, 0, mode);
-  }
+test('focused mode never forces a continuation', async () => {
+  const h = harness({ entries: [{ type: 'custom', customType: 'ponytail-on-stimulants-mode', data: { mode: 'focused' } }] });
+  await start(h);
+  await beginExecution(h);
+  await h.handlers.get('agent_end')({}, h.ctx);
+  assert.equal(h.sent.length, 0);
 });
 
 test('real Pi tool-end shape is correlated to start arguments', async () => {

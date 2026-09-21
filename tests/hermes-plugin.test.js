@@ -101,22 +101,22 @@ import importlib.util, json
 spec = importlib.util.spec_from_file_location('PONYTAIL_ON_STIMULANTS_hermes_plugin', '__init__.py')
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
-ctx = mod.build_injected_context('ultra')
+ctx = mod.build_injected_context('feral')
 print(json.dumps({'ctx': ctx}))
 `, { XDG_CONFIG_HOME: tmp });
   const { ctx } = JSON.parse(output);
 
   assert.match(ctx, /PONYTAIL ON STIMULANTS ACTIVE — mode: feral/);
   assert.match(ctx, /Minimal architecture\. Maximal execution\./);
-  assert.match(ctx, /ultra/i);
+  assert.match(ctx, /^PONYTAIL ON STIMULANTS ACTIVE — mode: feral/);
   assert.doesNotMatch(ctx, /^---/);
-  assert.doesNotMatch(ctx, /\|\s*\*\*Lite\*\*/i);
+  assert.doesNotMatch(ctx, /^\|\s*\*\*focused\*\*/m);
 });
 
 test('Hermes mode config respects env, config file, off, and invalid command behavior', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-on-stimulants-config-'));
   fs.mkdirSync(path.join(tmp, 'ponytail-on-stimulants'), { recursive: true });
-  fs.writeFileSync(path.join(tmp, 'ponytail-on-stimulants', 'config.json'), JSON.stringify({ defaultMode: 'lite' }));
+  fs.writeFileSync(path.join(tmp, 'ponytail-on-stimulants', 'config.json'), JSON.stringify({ defaultMode: 'focused' }));
   const output = python(String.raw`
 import importlib.util, json
 spec = importlib.util.spec_from_file_location('PONYTAIL_ON_STIMULANTS_hermes_plugin', '__init__.py')
@@ -132,7 +132,7 @@ ctx = Ctx()
 mod.register(ctx)
 status_before = ctx.commands['ponytail-on-stimulants']('status')
 invalid = ctx.commands['ponytail-on-stimulants']('maximum')
-default_result = ctx.commands['ponytail-on-stimulants']('default lite')
+default_result = ctx.commands['ponytail-on-stimulants']('default feral')
 status_after = ctx.commands['ponytail-on-stimulants']('status')
 print(json.dumps({
     'default': mod.build_injected_context(None),
@@ -143,31 +143,15 @@ print(json.dumps({
     'saved_default': json.loads((mod._config_dir() / 'config.json').read_text())['defaultMode'],
     'status_after': status_after,
 }))
-`, { XDG_CONFIG_HOME: tmp, PONYTAIL_ON_STIMULANTS_DEFAULT_MODE: 'ultra' });
+`, { XDG_CONFIG_HOME: tmp, PONYTAIL_ON_STIMULANTS_DEFAULT_MODE: 'feral' });
   const data = JSON.parse(output);
   assert.match(data.default, /mode: feral/);
   assert.equal(data.off, '');
   assert.match(data.status_before, /current feral; default feral/);
   assert.match(data.invalid, /Usage:/);
-  assert.match(data.default_result, /focused/);
-  assert.equal(data.saved_default, 'focused');
+  assert.match(data.default_result, /feral/);
+  assert.equal(data.saved_default, 'feral');
   assert.match(data.status_after, /current feral; default feral/);
-});
-
-test('Hermes plugin review mode injects the real review skill body', () => {
-  const output = python(String.raw`
-import importlib.util, json
-spec = importlib.util.spec_from_file_location('PONYTAIL_ON_STIMULANTS_hermes_plugin', '__init__.py')
-mod = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(mod)
-ctx = mod.build_injected_context('review')
-print(json.dumps({'ctx': ctx}))
-`);
-  const { ctx } = JSON.parse(output);
-  assert.match(ctx, /PONYTAIL ON STIMULANTS ACTIVE — mode: review/);
-  assert.match(ctx, /Review the diff for the smallest sound architecture and complete execution/);
-  assert.match(ctx, /net: -<N> lines possible/);
-  assert.doesNotMatch(ctx, /^---/);
 });
 
 test('Hermes /ponytail-on-stimulants command changes mode and pre_llm_call injects current context', () => {
@@ -186,7 +170,7 @@ class Ctx:
         self.commands[name] = handler
 ctx = Ctx()
 mod.register(ctx)
-message = ctx.commands['ponytail-on-stimulants']('ultra')
+message = ctx.commands['ponytail-on-stimulants']('feral')
 injected = ctx.hooks['pre_llm_call'](session_id='s1', user_message='build it', conversation_history=[], is_first_turn=False, model='m', platform='cli')
 print(json.dumps({'message': message, 'context': injected['context']}))
 `);

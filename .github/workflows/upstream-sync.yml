@@ -93,9 +93,7 @@ jobs:
           fi
       - name: Install validation dependencies
         if: steps.merge.outputs.clean == 'true' || steps.merge.outputs.clean == 'existing'
-        run: |
-          pip install pandas==2.3.3
-          npm install --prefix ponytail-on-stimulants-mcp
+        run: pip install pandas==2.3.3
       - name: Validate reconciled fork
         if: steps.merge.outputs.clean == 'true' || steps.merge.outputs.clean == 'existing'
         run: |

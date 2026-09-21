@@ -2,9 +2,8 @@
 
 // ponytail command-file frontmatter parser.
 //
-// Pulled out of ponytail.mjs so the plugin module's only top-level export is
-// the plugin function itself. OpenCode's legacy plugin loader (the one that
-// runs before v1 plugins are detected) treats every function exported from a
+// Kept outside ponytail.mjs so the plugin module's only top-level export is
+// the plugin function itself. OpenCode treats every function exported from a
 // plugin module as a plugin; calling the frontmatter parser as one threw
 // "path must be a string or a file descriptor" because it got the plugin
 // context object as its first argument. Keeping the parser in its own module
