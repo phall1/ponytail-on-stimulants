@@ -7,12 +7,18 @@ const {
   buildContinuationPrompt,
   claimContinuation,
   collectGitEvidence,
+  createSpawnExec,
   createTurnState,
+  isContinuationPrompt,
   isExecutionPrompt,
+  isMutationTool,
   maxContinuations,
   recordToolCall,
   recordToolResult,
   redact,
+  restoreTurnState,
+  runCompletionDecision,
+  serializeTurnState,
   shouldRunCompletionPass,
   summarizeTrackedEvidence,
 } = require('../completion-gate');
@@ -138,6 +144,46 @@ test('mutation evidence qualifies common requests even without a classifier keyw
   assert.equal(shouldRunCompletionPass('full-send', state, evidence(state)), true);
   assert.equal(isExecutionPrompt('Please resolve issue 123'), true);
   assert.equal(isExecutionPrompt('Address the review feedback'), true);
+});
+
+test('host tool names canonicalize and treat apply_patch/Edit as mutations', () => {
+  const state = createTurnState('Please deal with issue 123');
+  recordToolCall(state, 'Edit', { file_path: 'parser.js' });
+  assert.equal(isMutationTool('Edit'), true);
+  assert.equal(isMutationTool('apply_patch'), true);
+  assert.equal(shouldRunCompletionPass('full-send', state, evidence(state)), true);
+  assert.equal(state.recentTools[0].tool, 'edit');
+});
+
+test('turn state survives JSON persist used by file-hook hosts', () => {
+  const state = createTurnState('Fix the parser bug in this repo');
+  recordToolCall(state, 'Write', { path: 'a.js' }, 'tool-1');
+  recordToolResult(state, 'Write', {}, false, 'tool-1');
+  const restored = restoreTurnState(JSON.parse(JSON.stringify(serializeTurnState(state))));
+  assert.equal(restored.hadMutation, true);
+  assert.equal(restored.toolCalls, 1);
+  assert.equal(restored.recentTools[0].status, 'passed');
+  assert.equal(shouldRunCompletionPass('full-send', restored, evidence(restored)), true);
+});
+
+test('runCompletionDecision claims one full-send pass and isContinuationPrompt detects it', async () => {
+  const state = createTurnState('Implement the API change in this repo');
+  recordToolCall(state, 'edit', { path: 'a.js' });
+  const decision = await runCompletionDecision({ mode: 'full-send', state, exec: null });
+  assert.equal(decision.pass, 1);
+  assert.equal(decision.maximum, 1);
+  assert.equal(isContinuationPrompt(decision.prompt), true);
+  assert.equal(await runCompletionDecision({ mode: 'full-send', state, exec: null }), null);
+});
+
+test('createSpawnExec reports command failures without throwing', async () => {
+  const exec = createSpawnExec((command, args) => {
+    assert.equal(command, 'git');
+    return { status: 2, stdout: '', stderr: 'nope', error: null };
+  });
+  const result = await exec('git', ['status'], { cwd: '/tmp' });
+  assert.equal(result.code, 2);
+  assert.equal(result.stderr, 'nope');
 });
 
 test('focused and off never force a pass', () => {

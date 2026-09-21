@@ -1,7 +1,7 @@
 {
   "name": "ponytail-on-stimulants",
-  "description": "Minimal architecture. Maximal execution. Completion discipline for coding agents.",
   "version": "0.3.0",
+  "description": "Minimal architecture. Maximal execution. Completion discipline for coding agents.",
   "author": {
     "name": "phall1",
     "url": "https://github.com/phall1"
@@ -10,12 +10,10 @@
   "repository": "https://github.com/phall1/ponytail-on-stimulants",
   "license": "MIT",
   "keywords": [
-    "yagni",
-    "minimalism",
-    "code-review",
+    "completion",
+    "pi",
+    "omp",
     "productivity"
   ],
-  "commands": "commands/",
-  "skills": "skills/",
-  "hooks": "hooks/copilot-hooks.json"
+  "skills": "./skills/"
 }

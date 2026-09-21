@@ -38,6 +38,10 @@ test('npm artifact includes the Agent Plugins core and native runtimes but exclu
     'skills/ponytail-on-stimulants/SKILL.md',
     'pi-extension/index.js',
     'completion-gate/index.js',
+    'completion-gate/persist.js',
+    '.omp-plugin/marketplace.json',
+    '.omp-plugin/plugin.json',
+    'hooks/ponytail-on-stimulants-gate.js',
   ]) assert.ok(files.includes(required), `${required} missing from npm artifact`);
   assert.equal(files.some((file) => file.includes('/test/')), false);
   assert.equal(files.some((file) => file.startsWith('tests/')), false);

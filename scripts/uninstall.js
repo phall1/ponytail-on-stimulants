@@ -22,9 +22,22 @@ function removeIfExists(filePath, label) {
   }
 }
 
+const persist = require('../completion-gate/persist');
+
+function removeTurnFiles(directory, label) {
+  for (const file of persist.listTurnStateFiles(directory)) {
+    removeIfExists(file, label);
+  }
+}
+
 removeIfExists(path.join(getClaudeDir(), '.ponytail-on-stimulants-active'), 'Ponytail on Stimulants mode flag');
 removeIfExists(path.join(getClaudeDir(), '.ponytail-on-stimulants-statusline-nudged'), 'Ponytail on Stimulants statusline nudge flag');
+removeTurnFiles(getClaudeDir(), 'Ponytail on Stimulants Claude/Codex turn state');
 removeIfExists(path.join(os.homedir(), '.cursor', '.ponytail-on-stimulants-active'), 'Ponytail on Stimulants Cursor mode flag');
+removeTurnFiles(path.join(os.homedir(), '.cursor'), 'Ponytail on Stimulants Cursor turn state');
+removeTurnFiles(path.join(os.homedir(), '.qoder'), 'Ponytail on Stimulants Qoder turn state');
+if (process.env.PLUGIN_DATA) removeTurnFiles(process.env.PLUGIN_DATA, 'Ponytail on Stimulants Codex turn state');
+if (process.env.COPILOT_PLUGIN_DATA) removeTurnFiles(process.env.COPILOT_PLUGIN_DATA, 'Ponytail on Stimulants Copilot turn state');
 removeIfExists(
   path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'opencode', '.ponytail-on-stimulants-active'),
   'Ponytail on Stimulants OpenCode mode flag',

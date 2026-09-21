@@ -11,6 +11,7 @@ const jsonFiles = [
   '.codex-plugin/plugin.json',
   '.devin-plugin/plugin.json',
   '.github/plugin/plugin.json',
+  '.omp-plugin/plugin.json',
   '.qoder-plugin/plugin.json',
   'gemini-extension.json',
   'package.json',

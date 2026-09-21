@@ -21,7 +21,8 @@ Intentionally fork-owned conflict surfaces:
 
 - `AGENTS.md` and static rule copies;
 - `skills/ponytail-on-stimulants*/` and generated `.openclaw/skills/` copies;
-- `completion-gate/` and its Pi integration;
+- `completion-gate/` and its Pi / Oh My Pi integration;
+- `.omp-plugin/` marketplace packaging and `package.json` `omp.extensions`;
 - `benchmarks/completion/`;
 - fork package, plugin, command, skill, runtime-state, and branding identities;
 - `README.md`, `UPSTREAM.md`, `RELEASE.md`;
@@ -48,7 +49,8 @@ The scheduled `.github/workflows/upstream-sync.yml` follows the same policy on a
 - upstream ladder-only prompt vs fork completion loop and stopping contract;
 - globally named `ponytail` packages, skills, commands, files, and state vs coexistence-safe fork names;
 - upstream code-size benchmark messaging vs fork completion metrics;
-- Pi lifecycle handling, where this fork adds a bounded `agent_settled` continuation pass.
+- Pi lifecycle handling, where this fork adds a bounded `agent_settled` continuation pass;
+- Oh My Pi marketplace/extension packaging, which this fork keeps first-class and distinct from upstream `ponytail`.
 
 ## Release relationship
 
