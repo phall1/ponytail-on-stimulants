@@ -194,7 +194,7 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
     });
   }
 
-  pi.on('input', async (event) => {
+  pi.on('input', async (event, ctx) => {
     const source = event && event.source;
     if (source === 'extension') return;
     const text = event && event.text;
@@ -203,7 +203,7 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
     queuedPass = null;
     syncStatus(ctx);
     if (currentMode === 'off') return;
-    if (isDeactivationCommand(text)) setMode('off');
+    if (isDeactivationCommand(text)) setMode('off', ctx);
   });
 
   function sessionEntries(ctx) {
