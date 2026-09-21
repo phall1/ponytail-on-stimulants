@@ -1,78 +1,38 @@
 # Ponytail on Stimulants
 
-> **Minimal architecture. Maximal execution.**
+> **Ponytail stops over-engineering. On Stimulants stops under-executing.**
 
-Ponytail taught coding agents to stop over-engineering. Ponytail on Stimulants teaches them to stop under-executing.
+Same senior engineer. Now the ticket actually gets closed.
 
-Same senior engineer. Now the ticket is actually getting closed.
+This is the completion-discipline plugin: smallest sound design, then finish the whole change. Packaged as `ponytail-on-stimulants` (do not confuse the product nickname **on steroids** with the package name). Soft fork of [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail). MIT.
 
-This project is a maintainable soft fork of [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail). It is packaged as an [Agent Plugins v1.0.0](https://agent-plugins.org/specification) plugin and keeps Ponytail's YAGNI, reuse, standard-library, native-platform, portability, and safety discipline while adding an operational completion contract:
+**Unbounded persistence. Bounded scope.** Finish what the outcome requires. Do not turn persistence into unrelated refactoring.
 
-1. understand the repository and affected flow;
-2. choose the smallest sound architecture;
-3. execute the whole requested and mechanically implied change;
-4. verify in proportion to blast radius;
-5. run an adversarial second pass before stopping.
-
-**Unbounded persistence. Bounded scope.** Finish what the outcome requires; do not turn persistence into unrelated refactoring.
-
-## Modes
-
-| Mode | Behavior |
-|------|----------|
-| `focused` | Complete the requested path with normal proportional verification. |
-| `full-send` | Trace affected paths, do implied work, verify, and run an explicit adversarial pass. Default. |
-| `feral` | Stronger caller/edge search and broader reasonable verification; scope remains bounded. |
-| `off` | Disable injected behavior in native adapters. |
-
-## Operational completion gate
-
-The Pi adapter demonstrates the stronger loop end to end. After a qualifying coding turn settles, it gathers deterministic evidence (mutations, tool errors, repeated actions/failures, `git diff --check`, changed files, and introduced TODO markers) and can queue a bounded completion pass:
-
-- `focused`: 0 forced passes
-- `full-send`: 1 forced pass
-- `feral`: at most 2 forced passes
-
-Human input resets the counter; extension follow-ups do not. Hard caps, the off state, and fail-open error handling prevent infinite agency. Other hosts still receive the complete prompt contract; they do not pretend to support a continuation lifecycle they lack.
-
-### Experimental Jev judge
-
-Jev is optional and is never the coding model. On feral's second stop attempt, Pi can send compact structured state to TypeSafe's System One API. Code calculates deterministic facts; Jev judges fuzzy completion questions; the coding agent reasons and executes.
-
-```sh
-export PONYTAIL_ON_STIMULANTS_JEV_ENABLED=1
-export TYPESAFE_API_KEY=...
-```
-
-Optional settings:
-
-- `PONYTAIL_ON_STIMULANTS_JEV_MODEL` (default `jev-latest`)
-- `PONYTAIL_ON_STIMULANTS_JEV_TIMEOUT_MS` (default `2500`)
-- `PONYTAIL_ON_STIMULANTS_JEV_RETRIES` (`0` or `1`, default `0`)
-- `PONYTAIL_ON_STIMULANTS_JEV_ENDPOINT` (default official endpoint)
-
-Missing credentials, timeout, transport errors, service errors, and malformed responses fail open. Jev is advisory: its judgment is shown to the coding model and never starts or suppresses execution directly. When enabled, the adapter sends only request/response length and claim flags, changed paths, tool-result fingerprints, and aggregate evidence to TypeSafe. It does not send task text, assistant-response text, file contents, tool output, or raw command text. Changed paths and fingerprints can still be sensitive metadata, so leave Jev disabled when repository metadata must not leave the machine. Core behavior has no TypeSafe dependency.
-
-## Install
-
-### Agent Plugins v1.0.0
-
-Install this repository or its npm artifact with an Agent Plugins v1.0.0 client. The portable package uses the fixed layout:
-
-- `plugin.json` — canonical closed manifest;
-- `skills/*/SKILL.md` — discoverable Agent Skills;
-- `mcp.json` — stdio server declaration;
-- `mcp/server.js` — dependency-free Node server exposing the `ponytail-on-stimulants` prompt and `ponytail_on_stimulants_instructions` tool.
-
-The MCP server runs directly from an extracted package and requires no package-local dependency installation. It accepts only `focused`, `full-send`, and `feral`.
-
-The sections below cover current native adapters for client behavior outside the portable Agent Plugins core.
+## Install (30 seconds)
 
 ### Pi
 
 ```sh
 pi install git:github.com/phall1/ponytail-on-stimulants
 ```
+
+### Oh My Pi (OMP)
+
+```sh
+omp plugin marketplace add phall1/ponytail-on-stimulants
+omp plugin install ponytail-on-stimulants@ponytail-on-stimulants
+```
+
+Restart the session so the shared Pi completion gate loads. OMP reads `.omp-plugin/marketplace.json` (Claude's `.claude-plugin/marketplace.json` is the fallback). The plugin's `package.json` `omp.extensions` points at the same `pi-extension` Pi uses.
+
+### Codex
+
+```sh
+codex plugin marketplace add phall1/ponytail-on-stimulants
+codex plugin add ponytail-on-stimulants@ponytail-on-stimulants
+```
+
+Then open `/hooks`, **review and trust** SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, and Stop, and start a new thread. Untrusted hooks never run.
 
 ### OpenCode
 
@@ -95,14 +55,69 @@ Send these as two separate prompts:
 /plugin install ponytail-on-stimulants@ponytail-on-stimulants
 ```
 
-### Codex
+Trust the plugin hooks when prompted, then start a new session.
+
+---
+
+| After install | Command |
+|---------------|---------|
+| Set mode | `/ponytail-on-stimulants focused\|full-send\|feral\|off` |
+| Persist default | `/ponytail-on-stimulants default <mode>` |
+| Show current / default | `/ponytail-on-stimulants status` |
+| Review / audit / debt / gain / help | `/ponytail-on-stimulants-review` and siblings |
+
+Upstream Ponytail can stay installed. This fork uses different package, plugin, command, skill, hook, and state names.
+
+## What you get
+
+1. Understand the repository and affected flow.
+2. Choose the smallest sound architecture.
+3. Execute the whole requested and mechanically implied change.
+4. Verify in proportion to blast radius.
+5. Run an adversarial second pass before stopping.
+
+| Mode | Behavior | Forced completion passes |
+|------|----------|--------------------------|
+| `focused` | Complete the requested path with normal proportional verification. | 0 |
+| `full-send` | Trace affected paths, do implied work, verify, explicit adversarial pass. **Default.** | 1 |
+| `feral` | Stronger caller/edge search and broader reasonable verification; scope stays bounded. | at most 2 |
+| `off` | Disable injected behavior in native adapters. | 0 |
+
+Human input resets the counter. Extension/hook follow-ups do not. Hard caps and fail-open error handling prevent infinite agency.
+
+## Host contract (honest)
+
+| Host | Always-on instructions | Commands / skills | Operational completion gate |
+|------|------------------------|-------------------|-----------------------------|
+| **Pi** | Per-turn system prompt | Slash commands + skills | **Full.** `agent_end` queues a bounded follow-up before public settlement. |
+| **OMP** | Same Pi extension | Same Pi commands + `skills/` | **Full.** Marketplace install loads `omp.extensions` → the same `pi-extension` + `completion-gate/`. |
+| **Codex** | SessionStart inject | `/ponytail-on-stimulants*` + skills | **Stop hook.** Trust hooks, then Stop `decision: block` plus `reason` becomes a continuation prompt. |
+| **OpenCode** | System transform every turn | Slash commands + skills | **Best-effort.** Tracks tools; uses `session.stopping` when the host has it; otherwise `session.idle` + `session.prompt`. Not Pi's in-loop `agent_end`. |
+| **Claude Code** | SessionStart inject | `/ponytail-on-stimulants*` + skills | **Stop hook.** Stop `additionalContext` continues the turn without a fake `agent_settled` event. |
+
+Jev stays optional, disabled by default, and Pi/OMP-only (in-process). File-hook hosts do not call TypeSafe.
+
+### Experimental Jev judge
+
+Jev is never the coding model. On feral's second stop attempt, Pi/OMP can send compact structured state to TypeSafe's System One API. Code calculates deterministic facts; Jev judges fuzzy completion questions; the coding agent reasons and executes.
 
 ```sh
-codex plugin marketplace add phall1/ponytail-on-stimulants
-codex plugin add ponytail-on-stimulants@ponytail-on-stimulants
+export PONYTAIL_ON_STIMULANTS_JEV_ENABLED=1
+export TYPESAFE_API_KEY=...
 ```
 
-Then open `/hooks`, review and trust the lifecycle hooks, and start a new thread.
+Optional settings:
+
+- `PONYTAIL_ON_STIMULANTS_JEV_MODEL` (default `jev-latest`)
+- `PONYTAIL_ON_STIMULANTS_JEV_TIMEOUT_MS` (default `2500`)
+- `PONYTAIL_ON_STIMULANTS_JEV_RETRIES` (`0` or `1`, default `0`)
+- `PONYTAIL_ON_STIMULANTS_JEV_ENDPOINT` (default official endpoint)
+
+Missing credentials, timeout, transport errors, service errors, and malformed responses fail open. Jev is advisory: its judgment is shown to the coding model and never starts or suppresses execution directly. When enabled, the adapter sends only request/response length and claim flags, changed paths, tool-result fingerprints, and aggregate evidence to TypeSafe. It does not send task text, assistant-response text, file contents, tool output, or raw command text. Changed paths and fingerprints can still be sensitive metadata, so leave Jev disabled when repository metadata must not leave the machine. Core behavior has no TypeSafe dependency.
+
+## Other installs
+
+The portable Agent Plugins v1.0.0 core is `plugin.json`, `skills/*/SKILL.md`, `mcp.json`, and `mcp/server.js`. Native adapters below are extra.
 
 ### GitHub Copilot CLI
 
@@ -110,8 +125,6 @@ Then open `/hooks`, review and trust the lifecycle hooks, and start a new thread
 copilot plugin marketplace add phall1/ponytail-on-stimulants
 copilot plugin install ponytail-on-stimulants@ponytail-on-stimulants
 ```
-
-The equivalent interactive commands are the two `/plugin` commands shown for Claude Code.
 
 ### Gemini CLI
 
@@ -138,18 +151,7 @@ Static-rule hosts can copy the uniquely named rule from `.cursor/rules/`, `.wind
 
 Use each host's normal plugin/package removal command, then run `node scripts/uninstall.js` from an npm install or checkout to remove fork-owned user state. For a project-scoped Cursor hook installation, run `node scripts/cursor-hooks.js uninstall --project` from that project. These scripts match only `ponytail-on-stimulants` files and leave upstream Ponytail and unrelated hooks untouched.
 
-## Commands and configuration
-
-```text
-/ponytail-on-stimulants [focused|full-send|feral|off]
-/ponytail-on-stimulants default <mode>
-/ponytail-on-stimulants status
-/ponytail-on-stimulants-review
-/ponytail-on-stimulants-audit
-/ponytail-on-stimulants-debt
-/ponytail-on-stimulants-gain
-/ponytail-on-stimulants-help
-```
+## Configuration
 
 Default-mode resolution:
 
@@ -157,9 +159,7 @@ Default-mode resolution:
 2. `~/.config/ponytail-on-stimulants/config.json` (or XDG/Windows equivalent)
 3. `full-send`
 
-Runtime flags and config paths are distinct from upstream Ponytail, so both can be installed together. Commands, skills, plugin IDs, rule filenames, hook filenames, status keys, MCP identity, and uninstall matching are also fork-specific.
-
-Pi persists mode per session. File-hook native adapters preserve a selected mode across resume/compact events but share one fork-specific mode file per host profile; a fresh startup resets it to the configured default. Concurrent conversations in those hosts can therefore observe the most recent mode switch. This is an adapter limitation, not a claim of per-session isolation.
+Pi and OMP persist mode per session. File-hook native adapters preserve a selected mode across resume/compact events but share one fork-specific mode file per host profile; a fresh startup resets it to the configured default. Concurrent conversations in those hosts can therefore observe the most recent mode switch. Completion-turn evidence is stored per `session_id` so caps stay isolated.
 
 ## Development
 

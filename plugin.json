@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ponytail-on-stimulants",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Minimal architecture. Maximal execution. Completion discipline for coding agents.",
   "author": {
     "name": "phall1",

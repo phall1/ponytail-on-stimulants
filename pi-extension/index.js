@@ -97,6 +97,7 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
   let lastCtx = null;
   let turnState = createTurnState('');
   let finalAssistantMessage = '';
+  let queuedPass = null;
   const jevJudge = options.jevJudge === undefined ? createJevJudge() : options.jevJudge;
 
   function statusSurface(ctx) {
@@ -122,9 +123,12 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
     const icons = { focused: '🎯', 'full-send': '⚡', feral: '🔥' };
     const indicator = isActive ? theme.fg('accent', '●') : theme.fg('dim', '○');
     const icon = icons[currentMode] || '';
+    const pass = queuedPass
+      ? theme.fg('muted', ` · pass ${queuedPass.pass}/${queuedPass.maximum}`)
+      : '';
     ui.setStatus(
       COMMAND,
-      `${indicator} 🐴 ${theme.fg('muted', 'stimulants: ')}${theme.fg('text', `${icon} ${currentMode.toUpperCase()}`)}`,
+      `${indicator} 🐴 ${theme.fg('muted', 'stimulants: ')}${theme.fg('text', `${icon} ${currentMode.toUpperCase()}`)}${pass}`,
     );
   }
 
@@ -196,6 +200,8 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
     const text = event && event.text;
     turnState = createTurnState(text || '');
     finalAssistantMessage = '';
+    queuedPass = null;
+    syncStatus(ctx);
     if (currentMode === 'off') return;
     if (isDeactivationCommand(text)) setMode('off');
   });
@@ -215,6 +221,7 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
     currentMode = resolveSessionMode(entries, configuredDefaultMode);
     turnState = createTurnState('');
     finalAssistantMessage = '';
+    queuedPass = null;
     syncStatus(ctx);
     if (!getQuietStartup()) notify(ctx, `Ponytail on Stimulants loaded: ${currentMode}`);
   });
@@ -331,6 +338,9 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
     // Queueing here keeps RPC's public agent_settled event truthful: it fires only
     // after every bounded completion pass, never between the original turn and a pass.
     pi.sendUserMessage(prompt, { deliverAs: 'followUp' });
+    queuedPass = { pass: state.continuations, maximum };
+    syncStatus(ctx);
+    notify(ctx, `Completion pass ${state.continuations}/${maximum} queued.`);
   }
 
   pi.on('before_agent_start', async (event) => {

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "ponytail-on-stimulants",
+  "description": "Minimal architecture. Maximal execution. Completion discipline for coding agents.",
+  "owner": {
+    "name": "phall1",
+    "url": "https://github.com/phall1"
+  },
+  "metadata": {
+    "description": "Ponytail on Stimulants marketplace for Oh My Pi. Ships the same Pi completion gate via package.json omp.extensions.",
+    "version": "0.3.0"
+  },
+  "plugins": [
+    {
+      "name": "ponytail-on-stimulants",
+      "description": "Minimal architecture. Maximal execution. Completion discipline for coding agents. Shares Pi's bounded completion continuation gate on Oh My Pi.",
+      "source": "./",
+      "version": "0.3.0",
+      "category": "productivity",
+      "homepage": "https://github.com/phall1/ponytail-on-stimulants",
+      "repository": "https://github.com/phall1/ponytail-on-stimulants",
+      "license": "MIT",
+      "keywords": [
+        "completion",
+        "verification",
+        "pi",
+        "omp",
+        "productivity"
+      ],
+      "tags": [
+        "completion",
+        "verification",
+        "yagni",
+        "productivity"
+      ]
+    }
+  ]
+}

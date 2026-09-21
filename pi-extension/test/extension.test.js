@@ -107,6 +107,8 @@ test('full-send queues exactly one pass; extension follow-up does not reset it',
   await h.handlers.get('agent_end')({}, h.ctx);
   assert.equal(h.sent.length, 1);
   assert.match(h.sent[0], /COMPLETION PASS 1\/1/);
+  assert.match(h.statuses.at(-1)[1], /pass 1\/1/i);
+  assert.match(h.notifications.at(-1)[0], /Completion pass 1\/1 queued/);
   await h.handlers.get('input')({ source: 'extension', text: h.sent[0] }, h.ctx);
   await h.handlers.get('agent_end')({}, h.ctx);
   assert.equal(h.sent.length, 1);

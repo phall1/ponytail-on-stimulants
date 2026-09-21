@@ -97,6 +97,49 @@ test('unrelated commands do not touch the flag', async () => {
   assert.equal(fs.existsSync(statePath), false);
 });
 
+test('tool.execute hooks plus session.idle continue through session.prompt', async () => {
+  const prompts = [];
+  const hooks = await loadPlugin({
+    directory: tmp,
+    client: {
+      session: {
+        async prompt(request) { prompts.push(request); },
+      },
+    },
+  });
+  await hooks['command.execute.before']({ command: 'ponytail-on-stimulants', arguments: 'full-send', sessionID: 'sess' });
+  await hooks.event({ event: { type: 'message.updated', properties: { info: { id: 'sess', role: 'user', text: 'Fix the parser' } } } });
+  await hooks['tool.execute.before']({ tool: 'edit', sessionID: 'sess', callID: '1' }, { args: { path: 'a.js' } });
+  await hooks['tool.execute.after']({ tool: 'edit', sessionID: 'sess', callID: '1' }, { args: { path: 'a.js' } });
+  await hooks.event({ event: { type: 'session.idle', properties: { sessionID: 'sess' } } });
+  assert.equal(prompts.length, 1);
+  assert.equal(prompts[0].path.id, 'sess');
+  assert.match(prompts[0].body.parts[0].text, /COMPLETION PASS 1\/1/);
+  await hooks.event({ event: { type: 'session.idle', properties: { sessionID: 'sess' } } });
+  assert.equal(prompts.length, 1, 'full-send must not idle-continue twice');
+});
+
+test('session.stopping continues in-loop and suppresses the idle backup for that stop', async () => {
+  const prompts = [];
+  const hooks = await loadPlugin({
+    directory: tmp,
+    client: {
+      session: {
+        async prompt(request) { prompts.push(request); },
+      },
+    },
+  });
+  await hooks['command.execute.before']({ command: 'ponytail-on-stimulants', arguments: 'feral', sessionID: 'feral-sess' });
+  await hooks.event({ event: { type: 'message.updated', properties: { info: { id: 'feral-sess', role: 'user', text: 'Implement the API' } } } });
+  await hooks['tool.execute.before']({ tool: 'Write', sessionID: 'feral-sess', callID: 'w1' }, { args: { filePath: 'a.js' } });
+  const output = {};
+  await hooks['session.stopping']({ sessionID: 'feral-sess' }, output);
+  assert.equal(output.stop, false);
+  assert.match(output.message, /COMPLETION PASS 1\/2/);
+  await hooks.event({ event: { type: 'session.idle', properties: { sessionID: 'feral-sess' } } });
+  assert.equal(prompts.length, 0, 'idle must not steal feral pass 2 after session.stopping');
+});
+
 test('parseCommandFile reads frontmatter description + body, LF and CRLF', () => {
   const lf = path.join(tmp, 'cmd-lf.md');
   fs.writeFileSync(lf, '---\ndescription: do a thing\n---\n\nthe template body\n');

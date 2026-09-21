@@ -26,9 +26,11 @@ fs.mkdirSync(claudeDir, { recursive: true });
 
 const flagPath = path.join(claudeDir, '.ponytail-on-stimulants-active');
 const nudgePath = path.join(claudeDir, '.ponytail-on-stimulants-statusline-nudged');
+const turnPath = path.join(claudeDir, '.ponytail-on-stimulants-turn-s1.json');
 const upstreamFlagPath = path.join(claudeDir, '.ponytail-active');
 fs.writeFileSync(flagPath, 'full-send');
 fs.writeFileSync(nudgePath, '');
+fs.writeFileSync(turnPath, '{"prompt":"x"}');
 fs.writeFileSync(upstreamFlagPath, 'full');
 
 const configDir = path.join(temp, 'config-home', 'ponytail-on-stimulants');
@@ -73,6 +75,7 @@ let result = runUninstall(env);
 assert.equal(result.status, 0, result.stderr);
 assert.equal(fs.existsSync(flagPath), false, 'mode flag must be removed');
 assert.equal(fs.existsSync(nudgePath), false, 'statusline nudge flag must be removed');
+assert.equal(fs.existsSync(turnPath), false, 'turn state must be removed');
 assert.equal(fs.existsSync(opencodeFlagPath), false, 'OpenCode mode flag must be removed');
 assert.equal(fs.existsSync(configPath), false, 'config file must be removed');
 assert.equal(fs.existsSync(cursorFlagPath), false, 'Cursor mode flag must be removed');

@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const { getDefaultMode, getClaudeDir, isShellSafe } = require('./ponytail-on-stimulants-config');
 const { getPonytailInstructions } = require('./ponytail-on-stimulants-instructions');
+const { listTurnStateFiles } = require('../completion-gate/persist');
 const {
   clearMode,
   cursorRuleNotice,
@@ -19,6 +20,7 @@ const {
   isCursor,
   readMode,
   setMode,
+  stateDir,
   writeHookOutput,
 } = require('./ponytail-on-stimulants-runtime');
 
@@ -27,6 +29,12 @@ const settingsPath = path.join(claudeDir, 'settings.json');
 
 const resetMode = process.argv.includes('--reset');
 const mode = resetMode ? getDefaultMode() : (readMode() || getDefaultMode());
+
+if (resetMode) {
+  for (const file of listTurnStateFiles(stateDir)) {
+    try { fs.unlinkSync(file); } catch (_) {}
+  }
+}
 
 // "off" mode — skip activation entirely, don't write flag or emit rules
 if (mode === 'off') {

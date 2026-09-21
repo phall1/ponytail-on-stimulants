@@ -20,8 +20,10 @@ function files(directory = root) {
 test('public manifests use only the fork package identity', () => {
   for (const relative of [
     'package.json', 'plugin.json', '.claude-plugin/plugin.json', '.codex-plugin/plugin.json',
-    '.devin-plugin/plugin.json', '.github/plugin/plugin.json', '.qoder-plugin/plugin.json',
+    '.devin-plugin/plugin.json', '.github/plugin/plugin.json', '.omp-plugin/plugin.json',
+    '.qoder-plugin/plugin.json',
     '.agents/plugins/marketplace.json', '.claude-plugin/marketplace.json',
+    '.omp-plugin/marketplace.json',
     '.github/plugin/marketplace.json', '.grok-plugin/marketplace.json',
     'gemini-extension.json',
   ]) {

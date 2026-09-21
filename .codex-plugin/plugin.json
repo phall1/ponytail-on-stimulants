@@ -1,6 +1,6 @@
 {
   "name": "ponytail-on-stimulants",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Minimal architecture. Maximal execution. Completion discipline for coding agents.",
   "author": {
     "name": "phall1",
@@ -25,7 +25,8 @@
     "category": "Productivity",
     "capabilities": [
       "Instructions",
-      "Lifecycle hooks"
+      "Lifecycle hooks",
+      "Completion gate"
     ],
     "websiteURL": "https://github.com/phall1/ponytail-on-stimulants",
     "defaultPrompt": [

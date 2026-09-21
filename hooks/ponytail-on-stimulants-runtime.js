@@ -87,6 +87,20 @@ function writeHookOutput(event, mode, context = '') {
   process.stdout.write(context);
 }
 
+function writeStopContinuation(event, prompt) {
+  if (!prompt) return;
+  if (isCodex) {
+    // Codex Stop continuation is a new user prompt built from decision/reason.
+    return writeJson({ decision: 'block', reason: prompt });
+  }
+  return writeJson({
+    hookSpecificOutput: {
+      hookEventName: event || 'Stop',
+      additionalContext: prompt,
+    },
+  });
+}
+
 module.exports = {
   STATE_FILE,
   clearMode,
@@ -98,5 +112,7 @@ module.exports = {
   isQoder,
   readMode,
   setMode,
+  stateDir,
   writeHookOutput,
+  writeStopContinuation,
 };

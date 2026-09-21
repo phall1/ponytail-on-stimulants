@@ -106,6 +106,22 @@ test('ponytail-on-stimulants-mode-tracker self-exits when stdin never closes (no
   assert.equal(code, 0, 'hook must exit cleanly when stdin never closes');
 });
 
+test('ponytail-on-stimulants-gate self-exits when stdin never closes (no freeze)', async () => {
+  const hook = path.join(root, 'hooks', 'ponytail-on-stimulants-gate.js');
+  const child = spawn(process.execPath, [hook], { stdio: ['pipe', 'ignore', 'ignore'] });
+
+  const code = await new Promise((resolve, reject) => {
+    const guard = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error('gate hook hung on open stdin — it would freeze the session'));
+    }, 3000);
+    child.on('exit', (c) => { clearTimeout(guard); resolve(c); });
+    child.on('error', reject);
+  });
+
+  assert.equal(code, 0, 'gate hook must exit cleanly when stdin never closes');
+});
+
 test('Claude and Codex manifests point at the shared host-specific hook config', () => {
   for (const rel of HOST_PLUGIN_MANIFESTS) {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));

@@ -86,7 +86,7 @@ test('packed plugin runs its dependency-free MCP server over stdio', () => {
     assert.equal(responses[0].error.code, -32002);
     assert.equal(responses[1].error.code, -32602);
     assert.equal(responses[2].result.protocolVersion, '2024-11-05');
-    assert.equal(responses[2].result.serverInfo.version, '0.2.0');
+    assert.equal(responses[2].result.serverInfo.version, '0.3.0');
     assert.deepEqual(responses[2].result.capabilities, {
       prompts: { listChanged: false },
       tools: { listChanged: false },

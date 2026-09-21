@@ -44,6 +44,60 @@
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-on-stimulants-mode-tracker.js\"",
             "timeout": 5,
             "statusMessage": "Tracking Ponytail on Stimulants mode..."
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-on-stimulants-gate.js\"",
+            "timeout": 5,
+            "statusMessage": "Resetting Ponytail on Stimulants completion turn..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-on-stimulants-gate.js\"",
+            "timeout": 5,
+            "statusMessage": "Recording Ponytail on Stimulants tool evidence..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-on-stimulants-gate.js\"",
+            "timeout": 5,
+            "statusMessage": "Recording Ponytail on Stimulants tool result..."
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-on-stimulants-gate.js\"",
+            "timeout": 5,
+            "statusMessage": "Recording Ponytail on Stimulants tool failure..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-on-stimulants-gate.js\"",
+            "timeout": 15,
+            "statusMessage": "Checking Ponytail on Stimulants completion gate..."
           }
         ]
       }

@@ -20,7 +20,7 @@ function cleanEnv(extra = {}) {
 
 function run(script, { env = {}, input = '', args = [] } = {}) {
   return spawnSync(process.execPath, [path.join(root, 'hooks', script), ...args], {
-    env: cleanEnv(env), input, encoding: 'utf8', timeout: 3000,
+    env: cleanEnv(env), input, encoding: 'utf8', timeout: 10000,
   });
 }
 
@@ -160,8 +160,162 @@ test('subagent hook inherits the active fork mode and respects its matcher', () 
   } finally { fs.rmSync(home, { recursive: true, force: true }); }
 });
 
+test('Claude/Codex hook config includes the shared Stop completion gate', () => {
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'hooks', 'claude-codex-hooks.json'), 'utf8'));
+  assert.ok(Array.isArray(config.hooks.Stop) && config.hooks.Stop.length > 0);
+  assert.ok(Array.isArray(config.hooks.PreToolUse) && config.hooks.PreToolUse.length > 0);
+  assert.ok(Array.isArray(config.hooks.PostToolUseFailure) && config.hooks.PostToolUseFailure.length > 0);
+  assert.equal(config.hooks.UserPromptSubmit[0].hooks.length, 2);
+});
+
 test('malformed hook input fails open', () => {
   const result = run('ponytail-on-stimulants-mode-tracker.js', { input: '{broken' });
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, '');
+});
+
+test('Claude Stop hook continues with additionalContext after a mutation', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-on-stimulants-gate-'));
+  const claude = path.join(home, '.claude');
+  fs.mkdirSync(claude, { recursive: true });
+  fs.writeFileSync(path.join(claude, '.ponytail-on-stimulants-active'), 'full-send');
+  const env = { HOME: home, CLAUDE_CONFIG_DIR: claude };
+  try {
+    let result = run('ponytail-on-stimulants-gate.js', {
+      env,
+      input: JSON.stringify({
+        hook_event_name: 'UserPromptSubmit',
+        session_id: 's1',
+        prompt: 'Fix the parser bug in this repo',
+      }),
+    });
+    assert.equal(result.status, 0, result.stderr);
+    result = run('ponytail-on-stimulants-gate.js', {
+      env,
+      input: JSON.stringify({
+        hook_event_name: 'PreToolUse',
+        session_id: 's1',
+        tool_name: 'Edit',
+        tool_input: { file_path: 'parser.js' },
+        tool_use_id: 't1',
+      }),
+    });
+    assert.equal(result.status, 0, result.stderr);
+    result = run('ponytail-on-stimulants-gate.js', {
+      env,
+      input: JSON.stringify({
+        hook_event_name: 'PostToolUse',
+        session_id: 's1',
+        tool_name: 'Edit',
+        tool_input: { file_path: 'parser.js' },
+        tool_use_id: 't1',
+      }),
+    });
+    assert.equal(result.status, 0, result.stderr);
+    result = run('ponytail-on-stimulants-gate.js', {
+      env,
+      input: JSON.stringify({
+        hook_event_name: 'Stop',
+        session_id: 's1',
+        cwd: home,
+        last_assistant_message: 'Done.',
+      }),
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.hookSpecificOutput.hookEventName, 'Stop');
+    assert.match(output.hookSpecificOutput.additionalContext, /COMPLETION PASS 1\/1/);
+  } finally { fs.rmSync(home, { recursive: true, force: true }); }
+});
+
+test('Codex Stop hook continues with decision block and does not reset on the continuation prompt', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-on-stimulants-codex-gate-'));
+  const data = path.join(home, 'plugin-data');
+  fs.mkdirSync(data, { recursive: true });
+  fs.writeFileSync(path.join(data, '.ponytail-on-stimulants-active'), 'full-send');
+  const env = { HOME: home, PLUGIN_DATA: data };
+  try {
+    run('ponytail-on-stimulants-gate.js', {
+      env,
+      input: JSON.stringify({
+        hook_event_name: 'UserPromptSubmit',
+        session_id: 'c1',
+        prompt: 'Fix the parser bug in this repo',
+      }),
+    });
+    run('ponytail-on-stimulants-gate.js', {
+      env,
+      input: JSON.stringify({
+        hook_event_name: 'PreToolUse',
+        session_id: 'c1',
+        tool_name: 'apply_patch',
+        tool_input: { patch: 'diff' },
+        tool_use_id: 'p1',
+      }),
+    });
+    const first = run('ponytail-on-stimulants-gate.js', {
+      env,
+      input: JSON.stringify({
+        hook_event_name: 'Stop',
+        session_id: 'c1',
+        cwd: home,
+      }),
+    });
+    assert.equal(first.status, 0, first.stderr);
+    const output = JSON.parse(first.stdout);
+    assert.equal(output.decision, 'block');
+    assert.match(output.reason, /COMPLETION PASS 1\/1/);
+    const reset = run('ponytail-on-stimulants-gate.js', {
+      env,
+      input: JSON.stringify({
+        hook_event_name: 'UserPromptSubmit',
+        session_id: 'c1',
+        prompt: output.reason,
+      }),
+    });
+    assert.equal(reset.status, 0, reset.stderr);
+    const second = run('ponytail-on-stimulants-gate.js', {
+      env,
+      input: JSON.stringify({
+        hook_event_name: 'Stop',
+        session_id: 'c1',
+        cwd: home,
+      }),
+    });
+    assert.equal(second.status, 0, second.stderr);
+    assert.equal(second.stdout, '');
+  } finally { fs.rmSync(home, { recursive: true, force: true }); }
+});
+
+test('focused mode does not emit a Stop continuation', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-on-stimulants-focused-gate-'));
+  const claude = path.join(home, '.claude');
+  fs.mkdirSync(claude, { recursive: true });
+  fs.writeFileSync(path.join(claude, '.ponytail-on-stimulants-active'), 'focused');
+  const env = { HOME: home, CLAUDE_CONFIG_DIR: claude };
+  try {
+    run('ponytail-on-stimulants-gate.js', {
+      env,
+      input: JSON.stringify({
+        hook_event_name: 'UserPromptSubmit',
+        session_id: 's2',
+        prompt: 'Fix the parser bug in this repo',
+      }),
+    });
+    run('ponytail-on-stimulants-gate.js', {
+      env,
+      input: JSON.stringify({
+        hook_event_name: 'PreToolUse',
+        session_id: 's2',
+        tool_name: 'Write',
+        tool_input: { file_path: 'a.js' },
+      }),
+    });
+    const result = run('ponytail-on-stimulants-gate.js', {
+      env,
+      input: JSON.stringify({ hook_event_name: 'Stop', session_id: 's2', cwd: home }),
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, '');
+  } finally { fs.rmSync(home, { recursive: true, force: true }); }
 });

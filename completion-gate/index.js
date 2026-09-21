@@ -9,12 +9,41 @@ const MODE_POLICIES = Object.freeze({
   feral: { maxContinuations: 2 },
 });
 
-const MUTATION_TOOLS = new Set(['edit', 'write']);
-const SEARCH_TOOLS = new Set(['grep', 'find', 'read', 'ls']);
+const MUTATION_TOOLS = new Set([
+  'edit',
+  'write',
+  'strreplace',
+  'str_replace',
+  'notebookedit',
+  'notebook_edit',
+  'apply_patch',
+  'applypatch',
+]);
+const SEARCH_TOOLS = new Set(['grep', 'find', 'read', 'ls', 'glob']);
 const EXECUTION_WORDS = /\b(add|address|build|change|complete|configure|create|debug|delete|disable|enable|finish|fix|handle|implement|install|make|migrate|modify|refactor|remove|rename|repair|resolve|rework|run|ship|support|take care of|test|update|upgrade|verify|write)\b/i;
 const INFORMATIONAL_ONLY = /^\s*(explain|how|what|when|where|which|who|why)\b/i;
 const TODO_PATTERN = /^\+[^+].*\b(TODO|FIXME|XXX|HACK)\b/im;
 const TODO_TEXT = /\b(TODO|FIXME|XXX|HACK)\b/i;
+
+function canonicalToolName(toolName) {
+  return String(toolName || 'unknown').trim().toLowerCase() || 'unknown';
+}
+
+function mutationKey(toolName) {
+  return canonicalToolName(toolName).replace(/[^a-z0-9]/g, '');
+}
+
+function isMutationTool(toolName) {
+  const name = canonicalToolName(toolName);
+  if (MUTATION_TOOLS.has(name)) return true;
+  const key = mutationKey(name);
+  return key === 'edit' || key === 'write' || key === 'strreplace' ||
+    key === 'notebookedit' || key === 'applypatch';
+}
+
+function isContinuationPrompt(text) {
+  return /\bPONYTAIL ON STIMULANTS COMPLETION PASS\b/.test(String(text || ''));
+}
 
 function hash(value) {
   return crypto.createHash('sha256').update(String(value)).digest('hex').slice(0, 16);
@@ -69,26 +98,28 @@ function createTurnState(prompt = '') {
 
 function recordToolCall(state, toolName, args, toolCallId) {
   if (!state) return null;
-  const fingerprint = fingerprintTool(toolName, args);
+  const name = canonicalToolName(toolName);
+  const fingerprint = fingerprintTool(name, args);
   const entry = {
-    tool: toolName,
-    action: actionSummary(toolName, args),
+    tool: name,
+    action: actionSummary(name, args),
     fingerprint,
     status: 'pending',
   };
   state.toolCalls += 1;
   state.recentTools.push(entry);
   if (state.recentTools.length > 20) state.recentTools.shift();
-  if (toolCallId) state.pendingTools.set(toolCallId, { args, entry });
-  if (MUTATION_TOOLS.has(toolName)) state.hadMutation = true;
+  if (toolCallId) state.pendingTools.set(toolCallId, { args, entry, fingerprint });
+  if (isMutationTool(name)) state.hadMutation = true;
   state.fingerprints.set(fingerprint, (state.fingerprints.get(fingerprint) || 0) + 1);
   return fingerprint;
 }
 
 function resolveToolResult(state, toolName, args, toolCallId) {
+  const name = canonicalToolName(toolName);
   const pending = toolCallId ? state.pendingTools.get(toolCallId) : null;
   const resolvedArgs = pending?.args || args || {};
-  const fingerprint = fingerprintTool(toolName, resolvedArgs);
+  const fingerprint = pending?.fingerprint || fingerprintTool(name, resolvedArgs);
   const entry = pending?.entry || [...state.recentTools].reverse()
     .find((item) => item.fingerprint === fingerprint && item.status === 'pending');
   if (toolCallId) state.pendingTools.delete(toolCallId);
@@ -264,20 +295,138 @@ function claimContinuation(state, prompt, maximum) {
   return true;
 }
 
+function serializeTurnState(state) {
+  const snapshot = state || createTurnState('');
+  return {
+    prompt: snapshot.prompt,
+    acceptedExecution: Boolean(snapshot.acceptedExecution),
+    continuations: snapshot.continuations || 0,
+    toolCalls: snapshot.toolCalls || 0,
+    hadMutation: Boolean(snapshot.hadMutation),
+    recentTools: Array.isArray(snapshot.recentTools) ? snapshot.recentTools.slice(-20) : [],
+    pendingTools: [...(snapshot.pendingTools || new Map()).entries()].map(([id, pending]) => [
+      id,
+      {
+        args: pending && pending.args || {},
+        fingerprint: pending && pending.fingerprint,
+        entry: pending && pending.entry,
+      },
+    ]),
+    fingerprints: [...(snapshot.fingerprints || new Map()).entries()],
+    failureCounts: [...(snapshot.failureCounts || new Map()).entries()],
+    unresolvedFailures: [...(snapshot.unresolvedFailures || new Map()).entries()],
+    lastPrompt: snapshot.lastPrompt || null,
+  };
+}
+
+function restoreMap(value) {
+  try {
+    return new Map(Array.isArray(value) ? value : []);
+  } catch (_) {
+    return new Map();
+  }
+}
+
+function restoreTurnState(raw) {
+  const state = createTurnState(raw && raw.prompt);
+  if (!raw || typeof raw !== 'object') return state;
+  state.acceptedExecution = Boolean(raw.acceptedExecution);
+  state.continuations = Number.isInteger(raw.continuations) && raw.continuations >= 0 ? raw.continuations : 0;
+  state.toolCalls = Number.isInteger(raw.toolCalls) && raw.toolCalls >= 0 ? raw.toolCalls : 0;
+  state.hadMutation = Boolean(raw.hadMutation);
+  state.recentTools = Array.isArray(raw.recentTools) ? raw.recentTools.slice(-20) : [];
+  state.lastPrompt = typeof raw.lastPrompt === 'string' ? raw.lastPrompt : null;
+  state.fingerprints = restoreMap(raw.fingerprints);
+  state.failureCounts = restoreMap(raw.failureCounts);
+  state.unresolvedFailures = restoreMap(raw.unresolvedFailures);
+  state.pendingTools = restoreMap(raw.pendingTools);
+  for (const [id, pending] of state.pendingTools) {
+    if (!pending || typeof pending !== 'object') {
+      state.pendingTools.delete(id);
+      continue;
+    }
+    const fingerprint = pending.fingerprint || (pending.entry && pending.entry.fingerprint);
+    const entry = state.recentTools.find((item) => item && item.fingerprint === fingerprint && item.status === 'pending')
+      || pending.entry
+      || null;
+    if (entry) pending.entry = entry;
+    pending.fingerprint = fingerprint;
+  }
+  return state;
+}
+
+function createSpawnExec(spawnSyncImpl) {
+  const spawnSync = spawnSyncImpl || require('child_process').spawnSync;
+  return async function exec(command, args, options = {}) {
+    try {
+      const result = spawnSync(command, args, {
+        cwd: options.cwd,
+        timeout: options.timeout || 5000,
+        encoding: 'utf8',
+        windowsHide: true,
+      });
+      if (result.error) {
+        return {
+          code: 1,
+          stdout: result.stdout || '',
+          stderr: String(result.error.message || result.error),
+        };
+      }
+      return {
+        code: typeof result.status === 'number' ? result.status : 1,
+        stdout: result.stdout || '',
+        stderr: result.stderr || '',
+      };
+    } catch (error) {
+      return { code: 1, stdout: '', stderr: String(error && error.message || error) };
+    }
+  };
+}
+
+async function runCompletionDecision({ mode, state, exec, cwd, jev = null }) {
+  const tracked = summarizeTrackedEvidence(state);
+  if (!shouldRunCompletionPass(mode, state, { tracked })) return null;
+  const git = typeof exec === 'function' ? await collectGitEvidence(exec, cwd) : emptyGitEvidence();
+  const evidence = { tracked, git };
+  const maximum = maxContinuations(mode);
+  const prompt = buildContinuationPrompt({
+    mode,
+    pass: state.continuations + 1,
+    maximum,
+    evidence,
+    jev,
+  });
+  if (!claimContinuation(state, prompt, maximum)) return null;
+  return {
+    prompt,
+    evidence,
+    compact: compactEvidence(evidence),
+    pass: state.continuations,
+    maximum,
+  };
+}
+
 module.exports = {
   MODE_POLICIES,
   SEARCH_TOOLS,
   buildContinuationPrompt,
+  canonicalToolName,
   claimContinuation,
   collectGitEvidence,
   compactEvidence,
+  createSpawnExec,
   createTurnState,
   fingerprintTool,
+  isContinuationPrompt,
   isExecutionPrompt,
+  isMutationTool,
   maxContinuations,
   recordToolCall,
   recordToolResult,
   redact,
+  restoreTurnState,
+  runCompletionDecision,
+  serializeTurnState,
   shouldRunCompletionPass,
   summarizeTrackedEvidence,
 };
