@@ -31,7 +31,7 @@ function fixture(t) {
   const env = { ...process.env };
   for (const key of [
     'CLAUDE_PLUGIN_ROOT', 'PLUGIN_ROOT', 'QODER_PLUGIN_ROOT', 'CLAUDE_CONFIG_DIR',
-    'PLUGIN_DATA', 'COPILOT_PLUGIN_DATA', 'QODER_SESSION_ID', 'QODER_CONFIG_DIR', 'CURSOR_VERSION',
+    'PLUGIN_DATA', 'COPILOT_PLUGIN_DATA', 'QODER_SESSION_ID', 'QODER_PLUGIN_DATA', 'QODER_CONFIG_DIR', 'CURSOR_VERSION',
     'CURSOR_PROJECT_DIR', 'PONYTAIL_ON_STIMULANTS_SUBAGENT_MATCHER',
     'PONYTAIL_ON_STIMULANTS_DEFAULT_MODE', 'XDG_CONFIG_HOME',
   ]) delete env[key];
@@ -108,7 +108,7 @@ test('launchers load real hooks with backslashed roots without a shell', t => {
     const code = command.match(/node -e "([^"]+)"/)[1];
     const env = { ...f.env, [envKey]: root.split(path.sep).join('\\') };
     if (name === 'copilot') env.COPILOT_PLUGIN_DATA = f.copilot;
-    if (name === 'qoder') env.QODER_SESSION_ID = 'safety';
+    // Qoder launchers must detect their plugin root without a session marker.
     // Restore feral before each activation to prove --reset is still forwarded.
     fs.writeFileSync(path.join(name === 'copilot' ? f.copilot : f.claude, stateFile), 'feral');
     const args = ['-e', code, ...(command.includes('--reset') ? ['--', '--reset'] : [])];
@@ -134,7 +134,6 @@ test('host textual substitution cannot execute dollars, backticks, or quotes in 
     const substituted = command.replace(/\$\{(?:CLAUDE_|QODER_)?PLUGIN_ROOT\}/g, hostileRoot);
     const env = { ...f.env, [envKey]: hostileRoot };
     if (name === 'copilot') env.COPILOT_PLUGIN_DATA = f.copilot;
-    if (name === 'qoder') env.QODER_SESSION_ID = 'safety';
     checked(shellRun(substituted, env, f.dir, JSON.stringify({ prompt: 'hello', agent_type: 'general' })), command);
     for (const marker of ['DOLLAR_MARKER', 'BACKTICK_MARKER', 'QUOTE_MARKER']) {
       assert.equal(fs.existsSync(path.join(f.dir, marker)), false, command);
@@ -266,7 +265,9 @@ test('synchronous stdout survives immediate exit through a pipe for every runtim
       const code = `const r = require(${JSON.stringify(runtime)}); const s = ${JSON.stringify('héllo $ ` " \\ 🐴\n')}.repeat(40000); r.${event === 'Stop' ? 'writeStopContinuation' : 'writeHookOutput'}(${JSON.stringify(event)}, ${event === 'Stop' ? 's' : "'feral', s"}); process.exit(0);`;
       const result = spawnSync(process.execPath, ['-e', code], { env, encoding: 'utf8', timeout: 4000, maxBuffer: 8 * 1024 * 1024 });
       const output = checked(result, `${host}/${event}`);
-      if (host === 'claude' && event !== 'SubagentStart' && event !== 'Stop') assert.equal(output, context);
+      if (host === 'cursor' && event === 'SubagentStart') assert.equal(output, '');
+      else if (host === 'cursor' && event === 'UserPromptSubmit') assert.deepEqual(JSON.parse(output), { continue: true });
+      else if (host === 'claude' && event !== 'SubagentStart' && event !== 'Stop') assert.equal(output, context);
       else {
         const parsed = JSON.parse(output);
         if (host === 'codex') assert.equal(parsed.systemMessage, undefined);
@@ -391,4 +392,62 @@ test('Codex context envelopes never emit warning-style systemMessage', t => {
     env, encoding: 'utf8', timeout: 4000,
   }));
   assert.deepEqual(JSON.parse(empty), {});
+});
+
+test('Qoder plugin environment markers detect the host without overriding Copilot or Codex', t => {
+  const f = fixture(t);
+  const code = `const r = require(${JSON.stringify(runtime)}); process.stdout.write(JSON.stringify({isQoder:r.isQoder,isCopilot:r.isCopilot,isCodex:r.isCodex,stateDir:r.stateDir}));`;
+  for (const key of ['QODER_SESSION_ID', 'QODER_PLUGIN_ROOT', 'QODER_PLUGIN_DATA']) {
+    const env = { ...f.env, [key]: key === 'QODER_PLUGIN_ROOT' ? root : 'safety' };
+    for (const [extra, expected] of [
+      [{}, { isQoder: true, isCopilot: false, isCodex: false, stateDir: path.join(f.dir, '.qoder') }],
+      [{ PLUGIN_DATA: f.codex }, { isQoder: false, isCopilot: false, isCodex: true, stateDir: f.codex }],
+      [{ COPILOT_PLUGIN_DATA: f.copilot, PLUGIN_DATA: f.codex }, { isQoder: false, isCopilot: true, isCodex: false, stateDir: f.copilot }],
+    ]) {
+      const result = spawnSync(process.execPath, ['-e', code], { env: { ...env, ...extra }, encoding: 'utf8', timeout: 4000 });
+      assert.deepEqual(JSON.parse(checked(result)), expected);
+    }
+  }
+});
+
+test('Qoder uses documented SubagentStart and root-only launch emits SubagentStart context', t => {
+  const f = fixture(t);
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'hooks/qoder-hooks.json'), 'utf8'));
+  assert.equal(config.hooks.PreToolUse, undefined);
+  assert.ok(Array.isArray(config.hooks.SubagentStart));
+  assert.equal(config.hooks.SubagentStart[0].matcher, undefined);
+  const command = config.hooks.SubagentStart[0].hooks[0].command;
+  const code = command.match(/node -e "([^"]+)"/)[1];
+  const result = spawnSync(process.execPath, ['-e', code], {
+    env: { ...f.env, QODER_PLUGIN_ROOT: root }, input: JSON.stringify({ agent_type: 'general' }),
+    encoding: 'utf8', timeout: 4000,
+  });
+  const output = JSON.parse(checked(result));
+  assert.equal(output.hookSpecificOutput.hookEventName, 'SubagentStart');
+  assert.equal(output.hookSpecificOutput.additionalContext, getPonytailInstructions('feral'));
+});
+
+test('Cursor prompt acknowledgments contain only continue and selected mode restores on sessionStart', t => {
+  const f = fixture(t);
+  const cursor = path.join(f.dir, '.cursor');
+  fs.mkdirSync(cursor);
+  const env = { ...f.env, CURSOR_VERSION: 'safety', CURSOR_PROJECT_DIR: f.dir };
+  const flag = path.join(cursor, stateFile);
+  const send = prompt => JSON.parse(checked(run(tracker, env, JSON.stringify({ prompt }))));
+  assert.deepEqual(send('/ponytail-on-stimulants feral'), { continue: true });
+  assert.equal(fs.readFileSync(flag, 'utf8'), 'feral');
+  const restored = JSON.parse(checked(run(activate, env)));
+  assert.equal(restored.additional_context, getPonytailInstructions('feral'));
+  assert.deepEqual(send('/ponytail-on-stimulants status'), { continue: true });
+  assert.deepEqual(send('/ponytail-on-stimulants default focused'), { continue: true });
+  assert.equal(fs.readFileSync(flag, 'utf8'), 'feral');
+  assert.deepEqual(send('/ponytail-on-stimulants off'), { continue: true });
+  assert.equal(fs.existsSync(flag), false);
+  assert.equal(checked(run(tracker, env, JSON.stringify({ prompt: 'hello' }))), '');
+  const rule = path.join(cursor, 'rules/ponytail-on-stimulants.mdc');
+  fs.mkdirSync(path.dirname(rule));
+  fs.writeFileSync(rule, 'always-on ruleset');
+  assert.match(JSON.parse(checked(run(activate, env))).additional_context, /always-on Cursor rule/);
+  assert.deepEqual(send('/ponytail-on-stimulants feral'), { continue: true });
+  assert.equal(fs.existsSync(flag), false);
 });

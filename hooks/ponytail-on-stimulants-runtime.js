@@ -14,7 +14,9 @@ function isVsCodeCopilotRoot(pluginRoot) {
 const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA) ||
   isVsCodeCopilotRoot(process.env.CLAUDE_PLUGIN_ROOT);
 const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
-const isQoder = !isCopilot && !isCodex && Boolean(process.env.QODER_SESSION_ID);
+const isQoder = !isCopilot && !isCodex && Boolean(
+  process.env.QODER_SESSION_ID || process.env.QODER_PLUGIN_ROOT || process.env.QODER_PLUGIN_DATA,
+);
 const isCursor = !isCopilot && !isCodex && !isQoder && Boolean(process.env.CURSOR_VERSION);
 
 let stateDir = getClaudeDir();
@@ -74,10 +76,10 @@ function writeCodexOutput(event, context) {
 }
 
 function writeCursorOutput(event, context) {
-  if (!context) return;
-  const output = { additional_context: context };
-  if (event === 'UserPromptSubmit') output.continue = true;
-  writeJson(output);
+  // Native beforeSubmitPrompt cannot inject context; mode changes apply at
+  // the next sessionStart, the only supported context-delivery event.
+  if (event === 'UserPromptSubmit') return writeJson({ continue: true });
+  if (event === 'SessionStart' && context) return writeJson({ additional_context: context });
 }
 
 function writeHookOutput(event, mode, context = '') {
