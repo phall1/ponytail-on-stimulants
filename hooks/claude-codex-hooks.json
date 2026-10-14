@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-on-stimulants-activate.js\" --reset",
+            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-activate.js'))\" -- --reset",
             "timeout": 5,
             "statusMessage": "Loading Ponytail on Stimulants mode..."
           }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-on-stimulants-activate.js\"",
+            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-activate.js'))\"",
             "timeout": 5,
             "statusMessage": "Restoring Ponytail on Stimulants mode..."
           }
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-on-stimulants-subagent.js\"",
+            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-subagent.js'))\"",
             "timeout": 5,
             "statusMessage": "Loading Ponytail on Stimulants mode..."
           }
@@ -41,13 +41,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-on-stimulants-mode-tracker.js\"",
+            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-mode-tracker.js'))\"",
             "timeout": 5,
             "statusMessage": "Tracking Ponytail on Stimulants mode..."
           },
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-on-stimulants-gate.js\"",
+            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-gate.js'))\"",
             "timeout": 5,
             "statusMessage": "Resetting Ponytail on Stimulants completion turn..."
           }
@@ -59,7 +59,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-on-stimulants-gate.js\"",
+            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-gate.js'))\"",
             "timeout": 5,
             "statusMessage": "Recording Ponytail on Stimulants tool evidence..."
           }
@@ -71,7 +71,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-on-stimulants-gate.js\"",
+            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-gate.js'))\"",
             "timeout": 5,
             "statusMessage": "Recording Ponytail on Stimulants tool result..."
           }
@@ -83,7 +83,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-on-stimulants-gate.js\"",
+            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-gate.js'))\"",
             "timeout": 5,
             "statusMessage": "Recording Ponytail on Stimulants tool failure..."
           }
@@ -95,7 +95,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-on-stimulants-gate.js\"",
+            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-gate.js'))\"",
             "timeout": 15,
             "statusMessage": "Checking Ponytail on Stimulants completion gate..."
           }

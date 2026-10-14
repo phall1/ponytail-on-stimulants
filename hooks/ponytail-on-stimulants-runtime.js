@@ -57,8 +57,13 @@ function cursorRuleNotice(rule) {
     'rule exists; delete it to let hooks.json manage focused/full-send/feral/off.';
 }
 
+// Hook callers exit immediately; async pipe writes can be truncated at exit.
+function writeOut(text) {
+  fs.writeSync(1, text);
+}
+
 function writeJson(output) {
-  process.stdout.write(JSON.stringify(output));
+  writeOut(JSON.stringify(output));
 }
 
 function writeCodexOutput(event, mode, context) {
@@ -84,7 +89,7 @@ function writeHookOutput(event, mode, context = '') {
   if (event === 'SubagentStart') {
     return writeJson({ hookSpecificOutput: { hookEventName: event, additionalContext: context } });
   }
-  process.stdout.write(context);
+  writeOut(context);
 }
 
 function writeStopContinuation(event, prompt) {

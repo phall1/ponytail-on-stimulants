@@ -149,6 +149,8 @@ function finish() {
 }
 
 process.stdin.on('data', chunk => { input += chunk; });
-process.stdin.on('end', finish);
+// Exit on EOF so the referenced fallback does not delay the normal path.
+process.stdin.on('end', () => { finish(); process.exit(0); });
 process.stdin.on('error', () => { finish(); process.exit(0); });
-setTimeout(() => { finish(); process.exit(0); }, 1000).unref();
+// Keep the timer referenced: swallowed stdin must still trigger the fallback.
+setTimeout(() => { finish(); process.exit(0); }, 1000);
