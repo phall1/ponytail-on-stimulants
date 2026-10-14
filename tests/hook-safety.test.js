@@ -7,9 +7,13 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
 const { getPonytailInstructions } = require('../hooks/ponytail-on-stimulants-instructions');
+const { createTurnState } = require('../completion-gate');
+const { loadTurnState, saveTurnState, turnStatePath } = require('../completion-gate/persist');
 
 const root = path.join(__dirname, '..');
 const stateFile = '.ponytail-on-stimulants-active';
+const activate = path.join(root, 'hooks/ponytail-on-stimulants-activate.js');
+const gate = path.join(root, 'hooks/ponytail-on-stimulants-gate.js');
 const tracker = path.join(root, 'hooks/ponytail-on-stimulants-mode-tracker.js');
 const subagent = path.join(root, 'hooks/ponytail-on-stimulants-subagent.js');
 const runtime = path.join(root, 'hooks/ponytail-on-stimulants-runtime.js');
@@ -27,7 +31,7 @@ function fixture(t) {
   const env = { ...process.env };
   for (const key of [
     'CLAUDE_PLUGIN_ROOT', 'PLUGIN_ROOT', 'QODER_PLUGIN_ROOT', 'CLAUDE_CONFIG_DIR',
-    'PLUGIN_DATA', 'COPILOT_PLUGIN_DATA', 'QODER_SESSION_ID', 'CURSOR_VERSION',
+    'PLUGIN_DATA', 'COPILOT_PLUGIN_DATA', 'QODER_SESSION_ID', 'QODER_CONFIG_DIR', 'CURSOR_VERSION',
     'CURSOR_PROJECT_DIR', 'PONYTAIL_ON_STIMULANTS_SUBAGENT_MATCHER',
     'PONYTAIL_ON_STIMULANTS_DEFAULT_MODE', 'XDG_CONFIG_HOME',
   ]) delete env[key];
@@ -265,6 +269,7 @@ test('synchronous stdout survives immediate exit through a pipe for every runtim
       if (host === 'claude' && event !== 'SubagentStart' && event !== 'Stop') assert.equal(output, context);
       else {
         const parsed = JSON.parse(output);
+        if (host === 'codex') assert.equal(parsed.systemMessage, undefined);
         const actual = event === 'Stop' && host === 'codex' ? parsed.reason :
           event !== 'Stop' && host === 'copilot' ? parsed.additionalContext :
           event !== 'Stop' && host === 'cursor' ? parsed.additional_context : parsed.hookSpecificOutput.additionalContext;
@@ -272,4 +277,118 @@ test('synchronous stdout survives immediate exit through a pipe for every runtim
       }
     }
   }
+});
+
+test('startup mode reset preserves other sessions and their exhausted continuation caps', t => {
+  const f = fixture(t);
+  for (const [stateDir, hostEnv] of [[f.claude, {}], [f.codex, { PLUGIN_DATA: f.codex }]]) {
+    for (const [mode, cap] of [['full-send', 1], ['feral', 2]]) {
+      const env = { ...f.env, ...hostEnv, PONYTAIL_ON_STIMULANTS_DEFAULT_MODE: mode };
+      const sessions = ['starting-session', 'other-session'];
+      const snapshots = new Map();
+      for (const session of sessions) {
+        const file = turnStatePath(stateDir, session);
+        saveTurnState(file, { ...createTurnState('Fix the parser'), hadMutation: true, continuations: cap });
+        snapshots.set(file, fs.readFileSync(file, 'utf8'));
+      }
+      checked(run(activate, env, '', ['--reset']));
+      for (const [file, snapshot] of snapshots) assert.equal(fs.readFileSync(file, 'utf8'), snapshot);
+      // Another session remains capped even after a fresh session startup.
+      const stop = checked(run(gate, env, JSON.stringify({
+        hook_event_name: 'Stop', session_id: 'other-session', cwd: f.dir,
+      })));
+      assert.equal(stop, '', `${mode} startup reset revived an exhausted continuation`);
+      assert.equal(loadTurnState(turnStatePath(stateDir, 'other-session')).continuations, cap);
+      // Only the real human prompt resets its own session's turn state.
+      checked(run(gate, env, JSON.stringify({
+        hook_event_name: 'UserPromptSubmit', session_id: 'starting-session', prompt: 'Fix the next parser bug',
+      })));
+      assert.equal(loadTurnState(turnStatePath(stateDir, 'starting-session')).continuations, 0);
+      assert.equal(loadTurnState(turnStatePath(stateDir, 'other-session')).continuations, cap);
+    }
+  }
+});
+
+test('off activation is silent for every host and preserves turn state', t => {
+  const f = fixture(t);
+  const qoder = path.join(f.dir, '.qoder');
+  const cursor = path.join(f.dir, '.cursor');
+  fs.mkdirSync(cursor);
+  for (const [stateDir, extra] of [
+    [f.claude, {}], [f.codex, { PLUGIN_DATA: f.codex }],
+    [f.copilot, { COPILOT_PLUGIN_DATA: f.copilot }], [qoder, { QODER_SESSION_ID: 'safety' }],
+    [cursor, { CURSOR_VERSION: 'safety' }],
+  ]) {
+    const file = turnStatePath(stateDir, 'other-session');
+    saveTurnState(file, { ...createTurnState('Fix a bug'), continuations: 1 });
+    const snapshot = fs.readFileSync(file, 'utf8');
+    fs.writeFileSync(path.join(stateDir, stateFile), 'feral');
+    const env = { ...f.env, ...extra, PONYTAIL_ON_STIMULANTS_DEFAULT_MODE: 'off' };
+    assert.equal(checked(run(activate, env, '', ['--reset'])), '');
+    assert.equal(fs.existsSync(path.join(stateDir, stateFile)), false);
+    assert.equal(fs.readFileSync(file, 'utf8'), snapshot);
+    // Resume keeps persisted off (except Cursor's existing flag-clearing behavior).
+    fs.writeFileSync(path.join(stateDir, stateFile), 'off');
+    assert.equal(checked(run(activate, { ...env, PONYTAIL_ON_STIMULANTS_DEFAULT_MODE: 'feral' })), '');
+    if (!extra.CURSOR_VERSION) assert.equal(fs.readFileSync(path.join(stateDir, stateFile), 'utf8'), 'off');
+  }
+});
+
+test('Qoder bare and status commands emit one JSON ruleset or explicit off report', t => {
+  const f = fixture(t);
+  const env = { ...f.env, QODER_SESSION_ID: 'safety' };
+  const file = path.join(f.dir, '.qoder', stateFile);
+  for (const mode of ['focused', 'full-send', 'feral', 'off']) {
+    for (const command of ['/ponytail-on-stimulants', '/ponytail-on-stimulants:ponytail-on-stimulants']) {
+      for (const suffix of ['', ' status']) {
+        fs.writeFileSync(file, mode);
+        const output = JSON.parse(checked(run(tracker, env, JSON.stringify({ prompt: command + suffix }))));
+        assert.equal(output.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+        assert.equal(output.hookSpecificOutput.additionalContext, mode === 'off'
+          ? 'PONYTAIL ON STIMULANTS ACTIVE — mode: off' : getPonytailInstructions(mode));
+        assert.equal(fs.readFileSync(file, 'utf8'), mode);
+      }
+    }
+  }
+});
+
+test('QODER_CONFIG_DIR controls activation, tracking and subagent mode state', t => {
+  const f = fixture(t);
+  const custom = path.join(f.dir, 'custom qoder');
+  const env = { ...f.env, QODER_SESSION_ID: 'safety', QODER_CONFIG_DIR: custom };
+  const file = path.join(custom, stateFile);
+  const fallback = path.join(f.dir, '.qoder', stateFile);
+  const runtimeStateDir = checked(spawnSync(process.execPath, ['-e', `process.stdout.write(require(${JSON.stringify(runtime)}).stateDir)`], {
+    env, encoding: 'utf8', timeout: 4000,
+  }));
+  assert.equal(runtimeStateDir, custom);
+  JSON.parse(checked(run(tracker, env, JSON.stringify({ prompt: 'Fix a bug' }))));
+  assert.equal(fs.readFileSync(file, 'utf8'), 'focused');
+  checked(run(tracker, env, JSON.stringify({ prompt: '/ponytail-on-stimulants full-send' })));
+  const context = JSON.parse(checked(run(subagent, env))).hookSpecificOutput.additionalContext;
+  assert.equal(context, getPonytailInstructions('full-send'));
+  checked(run(activate, env));
+  assert.equal(fs.readFileSync(file, 'utf8'), 'full-send');
+  checked(run(tracker, env, JSON.stringify({ prompt: '/ponytail-on-stimulants off' })));
+  assert.equal(fs.readFileSync(file, 'utf8'), 'off');
+  assert.equal(checked(run(tracker, env, JSON.stringify({ prompt: 'Fix another bug' }))), '');
+  assert.equal(checked(run(activate, { ...env, PONYTAIL_ON_STIMULANTS_DEFAULT_MODE: 'off' }, '', ['--reset'])), '');
+  assert.equal(fs.existsSync(file), false);
+  assert.equal(fs.readFileSync(fallback, 'utf8'), 'feral');
+});
+
+test('Codex context envelopes never emit warning-style systemMessage', t => {
+  const f = fixture(t);
+  const env = { ...f.env, PLUGIN_DATA: f.codex };
+  const output = JSON.parse(checked(run(activate, env, '', ['--reset'])));
+  assert.equal(output.systemMessage, undefined);
+  assert.equal(output.hookSpecificOutput.hookEventName, 'SessionStart');
+  assert.equal(output.hookSpecificOutput.additionalContext, getPonytailInstructions('focused'));
+  const report = JSON.parse(checked(run(tracker, env, JSON.stringify({ prompt: '/ponytail-on-stimulants status' }))));
+  assert.equal(report.systemMessage, undefined);
+  assert.equal(report.hookSpecificOutput.additionalContext, 'PONYTAIL ON STIMULANTS ACTIVE — mode: focused');
+  const empty = checked(spawnSync(process.execPath, ['-e', `require(${JSON.stringify(runtime)}).writeHookOutput('SessionStart', 'focused'); process.exit(0)`], {
+    env, encoding: 'utf8', timeout: 4000,
+  }));
+  assert.deepEqual(JSON.parse(empty), {});
 });

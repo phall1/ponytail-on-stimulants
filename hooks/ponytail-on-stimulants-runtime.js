@@ -20,7 +20,7 @@ const isCursor = !isCopilot && !isCodex && !isQoder && Boolean(process.env.CURSO
 let stateDir = getClaudeDir();
 if (isCodex) stateDir = process.env.PLUGIN_DATA;
 if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA || getClaudeDir();
-if (isQoder) stateDir = path.join(os.homedir(), '.qoder');
+if (isQoder) stateDir = process.env.QODER_CONFIG_DIR || path.join(os.homedir(), '.qoder');
 if (isCursor) stateDir = path.join(os.homedir(), '.cursor');
 
 const statePath = path.join(stateDir, STATE_FILE);
@@ -66,8 +66,9 @@ function writeJson(output) {
   writeOut(JSON.stringify(output));
 }
 
-function writeCodexOutput(event, mode, context) {
-  const output = { systemMessage: `PONYTAIL_ON_STIMULANTS:${String(mode).toUpperCase()}` };
+function writeCodexOutput(event, context) {
+  // Codex renders systemMessage as a warning; deliver context without it.
+  const output = {};
   if (context) output.hookSpecificOutput = { hookEventName: event, additionalContext: context };
   writeJson(output);
 }
@@ -81,7 +82,7 @@ function writeCursorOutput(event, context) {
 
 function writeHookOutput(event, mode, context = '') {
   if (isCopilot) return writeJson(context ? { additionalContext: context } : {});
-  if (isCodex) return writeCodexOutput(event, mode, context);
+  if (isCodex) return writeCodexOutput(event, context);
   if (isQoder) {
     return writeJson(context ? { hookSpecificOutput: { hookEventName: event, additionalContext: context } } : {});
   }

@@ -79,11 +79,15 @@ function requestedMode(context) {
 }
 
 function reportMode(mode) {
-  writeHookOutput(
-    'UserPromptSubmit',
-    mode,
-    `PONYTAIL ON STIMULANTS ACTIVE — mode: ${mode}`,
-  );
+  // Qoder's active ruleset injection already reports the mode. Off has no
+  // ruleset injection, so keep its explicit report instead of going silent.
+  if (!isQoder || mode === 'off') {
+    writeHookOutput(
+      'UserPromptSubmit',
+      mode,
+      `PONYTAIL ON STIMULANTS ACTIVE — mode: ${mode}`,
+    );
+  }
   return { modeSwitched: false, deactivated: false };
 }
 
