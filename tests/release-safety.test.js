@@ -35,7 +35,8 @@ test('publish waits for validation and cannot run from manual dispatch', () => {
   assert.match(workflow, /benchmarks\/agentic\/run\.py --selftest/);
   assert.match(workflow, /benchmarks\/agentic\/complete\.py --selftest-offline/);
   assert.match(workflow, /npm-package/);
-  assert.match(workflow, /npm publish artifact\/ponytail-on-stimulants-\*\.tgz/);
+  // A leading ./ is required: npm treats artifact/package.tgz as owner/repo.
+  assert.match(workflow, /npm publish \.\/artifact\/ponytail-on-stimulants-\*\.tgz/);
   assert.doesNotMatch(workflow, /uses:\s+[^\s]+@(v\d+|main|master)\b/);
   assert.doesNotMatch(workflow, /npm@latest/);
   const publishJob = workflow.slice(workflow.indexOf('\n  publish:'));

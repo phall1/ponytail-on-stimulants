@@ -62,4 +62,4 @@ jobs:
         with:
           name: npm-package
           path: artifact
-      - run: npm publish artifact/ponytail-on-stimulants-*.tgz
+      - run: npm publish ./artifact/ponytail-on-stimulants-*.tgz
