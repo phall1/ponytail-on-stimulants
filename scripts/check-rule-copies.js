@@ -9,7 +9,7 @@ const agents = read('AGENTS.md');
 const canonical = agents.replace(/\n\n\(Yes, this file applies[\s\S]*?\)$/, '').trim();
 const copies = [
   ['.cursor/rules/ponytail-on-stimulants.mdc', stripFrontmatter],
-  ['.windsurf/rules/ponytail-on-stimulants.md', (text) => text.trim()],
+  ['.windsurf/rules/ponytail-on-stimulants.md', stripFrontmatter],
   ['.clinerules/ponytail-on-stimulants.md', (text) => text.trim()],
   ['.agents/rules/ponytail-on-stimulants.md', (text) => text.trim()],
   ['.qoder/rules/ponytail-on-stimulants.md', (text) => text.trim()],

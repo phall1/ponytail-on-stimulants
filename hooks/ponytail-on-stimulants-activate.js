@@ -30,7 +30,7 @@ const mode = resetMode ? getDefaultMode() : (readMode() || getDefaultMode());
 
 // "off" mode — skip activation entirely, don't write flag or emit rules
 if (mode === 'off') {
-  if (resetMode || isCursor) clearMode();
+  if (resetMode) clearMode();
   else setMode('off');
   process.exit(0);
 }

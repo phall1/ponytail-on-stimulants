@@ -8,6 +8,19 @@ Last reconciled commit: `e3ba2aa6f1e6f0bc4d69eb09c9f0d0a93af56156`
 
 Ponytail on Stimulants is a soft fork. Upstream is the authority for host protocol maintenance and installation plumbing; this fork is the authority for completion behavior, fork identity, Agent Plugins packaging, and its evaluation/gating code.
 
+## Selective maintenance review
+
+Reviewed upstream **v5.2.0**, commit `2961b52`, on 2026-10-14/15. Adopted useful
+host-protocol, subprocess-safety, skill-review and benchmark-correctness fixes;
+see [the compatibility review](docs/harness-compatibility.md) for sources and
+explicit exclusions. This was **not** a merge: the reconciled base above stays
+unchanged so future sync checks do not falsely assume upstream history is contained.
+
+Current official Codex packaging supports the portable manifest plus its native
+compatibility overlay; retain our Agent Plugins schema rather than importing the
+older upstream schema-removal workaround. Completion semantics and fork identity
+remain unchanged.
+
 ## Expected ownership
 
 Mostly upstream-owned, reconciled rather than rewritten:

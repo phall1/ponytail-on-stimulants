@@ -328,10 +328,10 @@ test('off activation is silent for every host and preserves turn state', t => {
     assert.equal(checked(run(activate, env, '', ['--reset'])), '');
     assert.equal(fs.existsSync(path.join(stateDir, stateFile)), false);
     assert.equal(fs.readFileSync(file, 'utf8'), snapshot);
-    // Resume keeps persisted off (except Cursor's existing flag-clearing behavior).
+    // Resume keeps persisted off.
     fs.writeFileSync(path.join(stateDir, stateFile), 'off');
     assert.equal(checked(run(activate, { ...env, PONYTAIL_ON_STIMULANTS_DEFAULT_MODE: 'feral' })), '');
-    if (!extra.CURSOR_VERSION) assert.equal(fs.readFileSync(path.join(stateDir, stateFile), 'utf8'), 'off');
+    assert.equal(fs.readFileSync(path.join(stateDir, stateFile), 'utf8'), 'off');
   }
 });
 
@@ -442,7 +442,9 @@ test('Cursor prompt acknowledgments contain only continue and selected mode rest
   assert.deepEqual(send('/ponytail-on-stimulants default focused'), { continue: true });
   assert.equal(fs.readFileSync(flag, 'utf8'), 'feral');
   assert.deepEqual(send('/ponytail-on-stimulants off'), { continue: true });
-  assert.equal(fs.existsSync(flag), false);
+  assert.equal(fs.readFileSync(flag, 'utf8'), 'off');
+  assert.equal(checked(run(activate, env)), '');
+  fs.unlinkSync(flag);
   assert.equal(checked(run(tracker, env, JSON.stringify({ prompt: 'hello' }))), '');
   const rule = path.join(cursor, 'rules/ponytail-on-stimulants.mdc');
   fs.mkdirSync(path.dirname(rule));

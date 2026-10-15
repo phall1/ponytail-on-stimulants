@@ -30,4 +30,10 @@ Set the default with `/ponytail-on-stimulants default <mode>` or `PONYTAIL_ON_ST
 
 Pi performs a bounded deterministic completion pass after qualifying coding turns: zero forced passes in focused, one in full-send, two in feral. Optional Jev judgment is disabled by default and never replaces deterministic checks.
 
-Stop the fork with `stop ponytail on stimulants`.
+Native hooks differ by host. Cursor mode selections apply on the next local
+chat, not during the current prompt; its startup hook injects context but has no
+completion gate. Gemini supplies context/skills, not a stop gate. Copilot's
+native startup hook supplies context; prompt-hook output cannot reinject rules.
+Static rules have no mutable modes. See README.md for the capability matrix.
+
+Stop the fork with `stop ponytail on stimulants` where native mode tracking is available.

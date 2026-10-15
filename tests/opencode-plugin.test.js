@@ -22,7 +22,7 @@ let loadPlugin, parseCommandFile;
 test.before(async () => {
   const url = pathToFileURL(path.join(__dirname, '..', '.opencode', 'plugins', 'ponytail-on-stimulants.mjs'));
   const mod = await import(url);
-  loadPlugin = mod.default;
+  loadPlugin = mod.default.server;
   // Keep the frontmatter parser outside the plugin module because OpenCode
   // treats every exported function as a plugin entry point. Require the helper
   // directly so this test also guards the module's single-export contract.
@@ -108,7 +108,7 @@ test('tool.execute hooks plus session.idle continue through session.prompt', asy
     },
   });
   await hooks['command.execute.before']({ command: 'ponytail-on-stimulants', arguments: 'full-send', sessionID: 'sess' });
-  await hooks.event({ event: { type: 'message.updated', properties: { info: { id: 'sess', role: 'user', text: 'Fix the parser' } } } });
+  await hooks.event({ event: { type: 'message.updated', properties: { info: { id: 'msg-1', sessionID: 'sess', role: 'user', text: 'Fix the parser' } } } });
   await hooks['tool.execute.before']({ tool: 'edit', sessionID: 'sess', callID: '1' }, { args: { path: 'a.js' } });
   await hooks['tool.execute.after']({ tool: 'edit', sessionID: 'sess', callID: '1' }, { args: { path: 'a.js' } });
   await hooks.event({ event: { type: 'session.idle', properties: { sessionID: 'sess' } } });
@@ -119,7 +119,7 @@ test('tool.execute hooks plus session.idle continue through session.prompt', asy
   assert.equal(prompts.length, 1, 'full-send must not idle-continue twice');
 });
 
-test('session.stopping continues in-loop and suppresses the idle backup for that stop', async () => {
+test('real V1 chat.message keeps continuation caps across metadata-only user events', async () => {
   const prompts = [];
   const hooks = await loadPlugin({
     directory: tmp,
@@ -130,14 +130,19 @@ test('session.stopping continues in-loop and suppresses the idle backup for that
     },
   });
   await hooks['command.execute.before']({ command: 'ponytail-on-stimulants', arguments: 'feral', sessionID: 'feral-sess' });
-  await hooks.event({ event: { type: 'message.updated', properties: { info: { id: 'feral-sess', role: 'user', text: 'Implement the API' } } } });
+  assert.equal(hooks['session.stopping'], undefined, 'do not claim an undocumented stop hook');
+  await hooks['chat.message']({ sessionID: 'feral-sess' }, { parts: [{ type: 'text', text: 'Implement the API' }] });
   await hooks['tool.execute.before']({ tool: 'Write', sessionID: 'feral-sess', callID: 'w1' }, { args: { filePath: 'a.js' } });
-  const output = {};
-  await hooks['session.stopping']({ sessionID: 'feral-sess' }, output);
-  assert.equal(output.stop, false);
-  assert.match(output.message, /COMPLETION PASS 1\/2/);
-  await hooks.event({ event: { type: 'session.idle', properties: { sessionID: 'feral-sess' } } });
-  assert.equal(prompts.length, 0, 'idle must not steal feral pass 2 after session.stopping');
+  for (let pass = 0; pass < 3; pass += 1) {
+    await hooks.event({ event: { type: 'session.idle', properties: { sessionID: 'feral-sess' } } });
+    if (pass < 2) {
+      const text = prompts.at(-1).body.parts[0].text;
+      await hooks['chat.message']({ sessionID: 'feral-sess' }, { parts: [{ type: 'text', text }] });
+      await hooks.event({ event: { type: 'message.updated', properties: { info: { id: `msg-${pass}`, sessionID: 'feral-sess', role: 'user' } } } });
+    }
+  }
+  assert.equal(prompts.length, 2, 'synthetic user prompts must not reset feral caps');
+  assert.match(prompts[1].body.parts[0].text, /COMPLETION PASS 2\/2/);
 });
 
 test('parseCommandFile reads frontmatter description + body, LF and CRLF', () => {
@@ -149,6 +154,14 @@ test('parseCommandFile reads frontmatter description + body, LF and CRLF', () =>
   const crlf = path.join(tmp, 'cmd-crlf.md');
   fs.writeFileSync(crlf, '---\r\ndescription: do a thing\r\n---\r\n\r\nthe template body\r\n');
   assert.deepEqual(parseCommandFile(crlf), { description: 'do a thing', template: 'the template body' });
+});
+
+test('command descriptions use the same quoted and block fields as skills', () => {
+  const file = path.join(tmp, 'cmd-description.md');
+  for (const value of ['"Quoted description"', "'Quoted description'", '>\n  Quoted description']) {
+    fs.writeFileSync(file, `---\ndescription: ${value}\n---\nbody\n`);
+    assert.equal(parseCommandFile(file).description.trim(), 'Quoted description');
+  }
 });
 
 test('parseCommandFile returns null when there is no frontmatter', () => {

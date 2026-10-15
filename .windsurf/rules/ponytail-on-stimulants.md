@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Ponytail on Stimulants
 
 **Minimal architecture. Maximal execution.**

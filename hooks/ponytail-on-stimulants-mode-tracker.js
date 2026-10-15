@@ -8,7 +8,6 @@ const {
   writeDefaultMode,
 } = require('./ponytail-on-stimulants-config');
 const {
-  clearMode,
   cursorRuleNotice,
   cursorRulePath,
   isCursor,
@@ -24,6 +23,7 @@ let done = false;
 const COMMANDS = new Set([
   '/ponytail-on-stimulants',
   '/ponytail-on-stimulants:ponytail-on-stimulants',
+  '$ponytail-on-stimulants:ponytail-on-stimulants',
 ]);
 
 function commandParts(prompt) {
@@ -54,8 +54,7 @@ function emitCursorRuleNotice(context) {
 }
 
 function deactivate() {
-  if (isCursor) clearMode();
-  else setMode('off');
+  setMode('off');
   writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL ON STIMULANTS MODE OFF');
   return { modeSwitched: false, deactivated: true };
 }

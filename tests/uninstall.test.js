@@ -10,12 +10,20 @@ const root = path.join(__dirname, '..');
 
 function runUninstall(env) {
   return spawnSync(process.execPath, [path.join(root, 'scripts', 'uninstall.js')], {
-    env: { ...process.env, ...env },
+    env: {
+      ...process.env,
+      HOME: home,
+      USERPROFILE: home,
+      CLAUDE_CONFIG_DIR: claudeDir,
+      XDG_CONFIG_HOME: path.join(temp, 'config-home'),
+      PLUGIN_DATA: path.join(temp, 'codex-data'),
+      COPILOT_PLUGIN_DATA: path.join(temp, 'copilot-data'),
+      QODER_CONFIG_DIR: path.join(temp, 'qoder-data'),
+      ...env,
+    },
     encoding: 'utf8',
   });
 }
-
-delete process.env.CLAUDE_CONFIG_DIR;
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-on-stimulants-uninstall-'));
 process.on('exit', () => fs.rmSync(temp, { recursive: true, force: true }));
@@ -160,8 +168,47 @@ assert.equal(
   'malformed hooks.json must be left unchanged',
 );
 
-// Running on an already-clean machine must not throw.
-result = runUninstall({ HOME: path.join(temp, 'home-empty'), USERPROFILE: path.join(temp, 'home-empty') });
+for (const command of [
+  'powershell -ExecutionPolicy Bypass -File "C:\\Program Files\\plugin\\ponytail-on-stimulants-statusline.ps1"',
+  'pwsh -File "C:\\plugin\\ponytail-on-stimulants-statusline.ps1"',
+  'bash "/plugin path/ponytail-on-stimulants-statusline.sh"',
+]) {
+  fs.writeFileSync(settingsPath, JSON.stringify({ statusLine: { type: 'command', command }, unrelated: true }));
+  result = runUninstall(env);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(fs.readFileSync(settingsPath, 'utf8')), { unrelated: true });
+}
+
+for (const command of [
+  'powershell -ExecutionPolicy Bypass -File "C:\\plugin\\ponytail-on-stimulants-statusline.ps1"; echo keep',
+  'false; printf keep; bash /p/ponytail-on-stimulants-statusline.sh',
+  "printf '%s' 'a;b'; bash /p/ponytail-on-stimulants-statusline.sh",
+  'bash /p/my-ponytail-on-stimulants-statusline.sh',
+  'bash /p/ponytail-on-stimulants-statusline.sh.backup',
+  'echo /p/ponytail-on-stimulants-statusline.sh',
+]) {
+  const raw = JSON.stringify({ statusLine: { type: 'command', command } });
+  fs.writeFileSync(settingsPath, raw);
+  result = runUninstall(env);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(fs.readFileSync(settingsPath, 'utf8'), raw, 'unrelated or complex shell text must remain byte-for-byte intact');
+}
+
+for (const name of ['codex-data', 'copilot-data', 'qoder-data']) {
+  const directory = path.join(temp, name);
+  fs.mkdirSync(directory, { recursive: true });
+  fs.writeFileSync(path.join(directory, '.ponytail-on-stimulants-active'), 'off');
+  fs.writeFileSync(path.join(directory, '.ponytail-active'), 'full');
+}
+result = runUninstall(env);
+assert.equal(result.status, 0, result.stderr);
+for (const name of ['codex-data', 'copilot-data', 'qoder-data']) {
+  assert.equal(fs.existsSync(path.join(temp, name, '.ponytail-on-stimulants-active')), false);
+  assert.equal(fs.existsSync(path.join(temp, name, '.ponytail-active')), true);
+}
+
+// Running on an already-clean machine must not throw. All paths stay sandboxed.
+result = runUninstall({ HOME: path.join(temp, 'home-empty'), USERPROFILE: path.join(temp, 'home-empty'), CLAUDE_CONFIG_DIR: path.join(temp, 'home-empty', '.claude') });
 assert.equal(result.status, 0, result.stderr);
 
 console.log('uninstall script checks passed');

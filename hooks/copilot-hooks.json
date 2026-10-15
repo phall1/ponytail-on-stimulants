@@ -4,8 +4,8 @@
     "sessionStart": [
       {
         "type": "command",
-        "bash": "node -e \"require(require('path').join(process.env.PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-activate.js'))\" -- --reset || exit 0",
-        "powershell": "if (Get-Command node -ErrorAction SilentlyContinue) { node -e \"require(require('path').join(process.env.PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-activate.js'))\" -- --reset }",
+        "bash": "node -e \"require(require('path').join(process.env.PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-activate.js'))\" || exit 0",
+        "powershell": "if (Get-Command node -ErrorAction SilentlyContinue) { node -e \"require(require('path').join(process.env.PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-activate.js'))\" }",
         "timeoutSec": 5
       }
     ],

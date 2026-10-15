@@ -11,7 +11,19 @@ const path = require('path');
 const { getConfigPath, getClaudeDir } = require('../hooks/ponytail-on-stimulants-config');
 const cursorHooks = require('./cursor-hooks');
 
-const STATUSLINE_SCRIPT = 'ponytail-on-stimulants-statusline';
+const STATUSLINE_SCRIPT = /(?:^|[\\/])ponytail-on-stimulants-statusline\.(?:sh|ps1)(?=["'\s]|$)/;
+const OWN_STATUSLINE = /^(?:(?:bash|sh)\s+|(?:pwsh|powershell)(?:\s+-ExecutionPolicy\s+Bypass)?(?:\s+-File)?\s+)?(?:"[^";&|`$\r\n]*ponytail-on-stimulants-statusline\.(?:sh|ps1)"|'[^';&|`$\r\n]*ponytail-on-stimulants-statusline\.(?:sh|ps1)'|[^\s"';&|`$]+ponytail-on-stimulants-statusline\.(?:sh|ps1))$/;
+
+function remainingStatusline(command) {
+  const trimmed = command.trim();
+  if (STATUSLINE_SCRIPT.test(trimmed) && OWN_STATUSLINE.test(trimmed)) return '';
+  // Only the simple && form we document is safe to split without a shell parser.
+  // Preserve semicolons, quoting, substitutions, pipes and mixed operators verbatim.
+  const parts = trimmed.split(' && ');
+  if (parts.length < 2 || /[^\w\s~./\\:&-]/.test(trimmed)) return null;
+  if (parts.some((part) => /[&]/.test(part))) return null;
+  return parts.filter((part) => !(STATUSLINE_SCRIPT.test(part) && OWN_STATUSLINE.test(part))).join(' && ');
+}
 
 function removeIfExists(filePath, label) {
   try {
@@ -35,9 +47,10 @@ removeIfExists(path.join(getClaudeDir(), '.ponytail-on-stimulants-statusline-nud
 removeTurnFiles(getClaudeDir(), 'Ponytail on Stimulants Claude/Codex turn state');
 removeIfExists(path.join(os.homedir(), '.cursor', '.ponytail-on-stimulants-active'), 'Ponytail on Stimulants Cursor mode flag');
 removeTurnFiles(path.join(os.homedir(), '.cursor'), 'Ponytail on Stimulants Cursor turn state');
-removeTurnFiles(path.join(os.homedir(), '.qoder'), 'Ponytail on Stimulants Qoder turn state');
-if (process.env.PLUGIN_DATA) removeTurnFiles(process.env.PLUGIN_DATA, 'Ponytail on Stimulants Codex turn state');
-if (process.env.COPILOT_PLUGIN_DATA) removeTurnFiles(process.env.COPILOT_PLUGIN_DATA, 'Ponytail on Stimulants Copilot turn state');
+for (const directory of [process.env.QODER_CONFIG_DIR || path.join(os.homedir(), '.qoder'), process.env.PLUGIN_DATA, process.env.COPILOT_PLUGIN_DATA].filter(Boolean)) {
+  removeTurnFiles(directory, 'Ponytail on Stimulants turn state');
+  removeIfExists(path.join(directory, '.ponytail-on-stimulants-active'), 'Ponytail on Stimulants mode flag');
+}
 removeIfExists(
   path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'opencode', '.ponytail-on-stimulants-active'),
   'Ponytail on Stimulants OpenCode mode flag',
@@ -63,22 +76,13 @@ try {
   const raw = fs.readFileSync(settingsPath, 'utf8').replace(/^\uFEFF/, '');
   const settings = JSON.parse(raw);
   const cmd = settings.statusLine && settings.statusLine.command;
-  // Only remove the parts this fork owns. If the user combined statuslines,
-  // keep every other plugin's command intact.
-  // ponytail-on-stimulants: splits on && / ; to detect other segments — good enough; a user
-  // piping statuslines together is on their own.
-  if (typeof cmd === 'string' && cmd.includes(STATUSLINE_SCRIPT)) {
-    const parts = cmd
-      .split(/&&|;/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const others = parts.filter((s) => !s.includes(STATUSLINE_SCRIPT));
-    if (others.length === 0) {
-      delete settings.statusLine;
-      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
-      console.log(`Removed Ponytail on Stimulants statusLine entry from ${settingsPath}`);
-    } else {
-      settings.statusLine.command = others.join(' && ');
+  if (typeof cmd === 'string' && STATUSLINE_SCRIPT.test(cmd)) {
+    const remaining = remainingStatusline(cmd);
+    if (remaining === null) {
+      console.warn(`Preserved complex statusLine command in ${settingsPath}; remove the Ponytail on Stimulants segment manually.`);
+    } else if (remaining !== cmd) {
+      if (remaining) settings.statusLine.command = remaining;
+      else delete settings.statusLine;
       fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
       console.log(`Removed Ponytail on Stimulants statusLine segment from ${settingsPath}`);
     }

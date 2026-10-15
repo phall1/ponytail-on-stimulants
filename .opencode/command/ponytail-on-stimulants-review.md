@@ -1,4 +1,4 @@
 ---
 description: Review the diff for smallest sound architecture and complete execution
 ---
-Review the current diff for both unjustified complexity and unfinished execution. Check affected callers, sibling paths, edge cases, generated state, verification evidence, TODOs, accidental files, speculative abstractions, avoidable dependencies, and dead flexibility. Report concrete file/line findings only; do not recommend unrelated cleanup.
+Review the current diff for both unjustified complexity and unfinished execution. Check affected callers, sibling paths, edge cases, generated state, verification evidence, TODOs, accidental files, speculative abstractions, avoidable dependencies, and dead flexibility. Number concrete file/line findings and distinguish executed checks from unverified claims. Before deletion or reuse recommendations, search source, tests, configuration, generated consumers and public interfaces; a missing local caller is not proof. Do not recommend unrelated cleanup or remove necessary validation.

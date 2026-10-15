@@ -15,7 +15,7 @@ const {
 } = require('../completion-gate');
 const { loadTurnState, resetTurnState, saveTurnState, turnStatePath } = require('../completion-gate/persist');
 const { getDefaultMode } = require('./ponytail-on-stimulants-config');
-const { readMode, stateDir, writeStopContinuation } = require('./ponytail-on-stimulants-runtime');
+const { isCodex, readMode, stateDir, writeStopContinuation } = require('./ponytail-on-stimulants-runtime');
 
 let input = '';
 let done = false;
@@ -72,7 +72,8 @@ function handleToolStart(data) {
 function handleToolEnd(data, isError) {
   const file = turnFile(data);
   const state = loadTurnState(file);
-  recordToolResult(state, toolName(data), toolArgs(data), isError, toolCallId(data));
+  const outcome = isCodex && !isError ? null : isError;
+  recordToolResult(state, toolName(data), toolArgs(data), outcome, toolCallId(data));
   saveTurnState(file, state);
 }
 
@@ -128,4 +129,4 @@ function finish() {
 process.stdin.on('data', (chunk) => { input += chunk; });
 process.stdin.on('end', finish);
 process.stdin.on('error', () => { finish(); });
-setTimeout(() => { finish(); }, 1000).unref();
+setTimeout(() => { finish(); }, 1000);

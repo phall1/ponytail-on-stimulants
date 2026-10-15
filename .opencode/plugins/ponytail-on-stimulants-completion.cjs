@@ -10,9 +10,10 @@ const {
 } = require('../../completion-gate');
 
 function eventSessionId(event) {
-  const props = (event && event.properties) || {};
+  const props = event?.data || event?.properties || {};
   const info = props.info || {};
-  return props.sessionID || props.sessionId || info.id || info.sessionID || info.sessionId || null;
+  // message.updated info.id is the MESSAGE id, not the session id.
+  return props.sessionID || props.sessionId || info.sessionID || info.sessionId || null;
 }
 
 function messageRole(event) {
@@ -51,6 +52,7 @@ async function promptSession(client, sessionID, text) {
 
 function createCompletionHost({ directory, exec } = {}) {
   const sessions = new Map();
+  const pending = new Set();
   const spawnExec = exec || createSpawnExec();
   let lastSessionId = 'default';
 
@@ -83,16 +85,25 @@ function createCompletionHost({ directory, exec } = {}) {
   }
 
   async function decide(mode, id) {
+    if (!id || !sessions.has(id) || pending.has(id)) return null;
     const current = session(id);
-    return runCompletionDecision({
-      mode,
-      state: current.state,
-      exec: spawnExec,
-      cwd: directory,
-    });
+    pending.add(id);
+    try {
+      const decision = await runCompletionDecision({
+        mode,
+        state: current.state,
+        exec: spawnExec,
+        cwd: directory,
+      });
+      return sessions.get(id) === current.state ? decision : null;
+    } finally {
+      pending.delete(id);
+    }
   }
 
-  return { decide, recordResult, recordTool, reset, session };
+  function remove(id) { sessions.delete(id); }
+
+  return { decide, recordResult, recordTool, remove, reset, session };
 }
 
 module.exports = {
