@@ -30,6 +30,11 @@ function yamlVersion(relative) {
 
 const versions = jsonFiles.map((file) => [file, jsonVersion(file)]);
 versions.push(['plugin.yaml', yamlVersion('plugin.yaml')]);
+// OMP resolves the installed version from its catalog before package.json.
+const ompCatalogPath = '.omp-plugin/marketplace.json';
+const ompCatalog = JSON.parse(fs.readFileSync(path.join(root, ompCatalogPath), 'utf8'));
+versions.push([`${ompCatalogPath} metadata`, ompCatalog.metadata?.version]);
+versions.push([`${ompCatalogPath} plugin`, ompCatalog.plugins?.find((plugin) => plugin.name === 'ponytail-on-stimulants')?.version]);
 let failed = false;
 for (const [file, version] of versions) {
   if (!semver.test(String(version || ''))) {
