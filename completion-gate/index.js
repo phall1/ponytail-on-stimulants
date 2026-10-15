@@ -129,6 +129,10 @@ function resolveToolResult(state, toolName, args, toolCallId) {
 function recordToolResult(state, toolName, args, isError, toolCallId) {
   if (!state) return;
   const { entry, fingerprint, resolvedArgs } = resolveToolResult(state, toolName, args, toolCallId);
+  if (isError === null) {
+    if (entry) entry.status = 'unknown';
+    return; // An observed result without a reliable outcome proves no success.
+  }
   if (entry) entry.status = isError ? 'failed' : 'passed';
   if (!isError) {
     state.unresolvedFailures.delete(fingerprint);

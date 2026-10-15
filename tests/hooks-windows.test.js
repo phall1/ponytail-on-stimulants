@@ -122,9 +122,10 @@ test('ponytail-on-stimulants-gate self-exits when stdin never closes (no freeze)
   assert.equal(code, 0, 'gate hook must exit cleanly when stdin never closes');
 });
 
-test('Claude and Codex manifests point at the shared host-specific hook config', () => {
+test('Claude and Codex manifests explicitly select their supported hook configs', () => {
   for (const rel of HOST_PLUGIN_MANIFESTS) {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
-    assert.equal(manifest.hooks, `./${HOOKS_JSON}`, `${rel} must not rely on root hooks auto-discovery`);
+    const expected = rel.startsWith('.codex-plugin') ? './hooks/codex-hooks.json' : `./${HOOKS_JSON}`;
+    assert.equal(manifest.hooks, expected, `${rel} must not rely on root hooks auto-discovery`);
   }
 });

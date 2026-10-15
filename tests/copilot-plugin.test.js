@@ -21,6 +21,10 @@ function readJSON(relPath) {
   return JSON.parse(fs.readFileSync(path.join(root, relPath), 'utf8'));
 }
 
+test('portable Copilot package ships its namespaced native hooks', () => {
+  assert.deepEqual(readJSON('com.github.copilot/hooks/hooks.json'), readJSON('hooks/copilot-hooks.json'));
+});
+
 test('copilot plugin command directory includes ponytail-on-stimulants-debt', () => {
   const manifest = readJSON('.github/plugin/plugin.json');
   assert.equal(manifest.name, 'ponytail-on-stimulants');

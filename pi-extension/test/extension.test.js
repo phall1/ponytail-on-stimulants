@@ -214,6 +214,82 @@ test('completion-loop integration fails open when continuation delivery fails', 
   assert.equal(h.sent.length, 0);
 });
 
+test('structured Pi sections preserve other owners and clear on off', async () => {
+  const h = harness();
+  await start(h);
+  const sections = { other: 'Keep me' };
+  const event = { systemPrompt: 'base', systemPromptOptions: { sections } };
+  assert.equal(await h.handlers.get('before_agent_start')(event), undefined);
+  assert.equal(sections.other, 'Keep me');
+  assert.match(sections['ponytail-on-stimulants'], /full-send/);
+  await h.commands.get('ponytail-on-stimulants').handler('off', h.ctx);
+  await h.handlers.get('before_agent_start')(event);
+  assert.deepEqual(sections, { other: 'Keep me' });
+});
+
+test('Pi forced prompts receive rules in rendered text rather than ignored sections', async () => {
+  const h = harness();
+  await start(h);
+  const options = { sections: { other: 'Keep me' }, forceSystemPrompt: 'Earlier extension instructions' };
+  const event = { systemPromptOptions: options, get systemPrompt() { return options.forceSystemPrompt; } };
+  const result = await h.handlers.get('before_agent_start')(event);
+  assert.match(result.systemPrompt, /^Earlier extension instructions\n\n/);
+  assert.match(result.systemPrompt, /PONYTAIL ON STIMULANTS ACTIVE/);
+  assert.deepEqual(options.sections, { other: 'Keep me' });
+});
+
+test('OMP prompt arrays stay arrays without mutating the host prompt', async () => {
+  const h = harness();
+  await start(h);
+  const original = ['first', 'second'];
+  const result = await h.handlers.get('before_agent_start')({ systemPrompt: original });
+  assert.deepEqual(result.systemPrompt.slice(0, 2), original);
+  assert.match(result.systemPrompt[2], /full-send/);
+  assert.deepEqual(original, ['first', 'second']);
+});
+
+for (const name of ['session_tree', 'session_switch', 'session_branch']) {
+  test(`${name} restores branch mode and invalidates old completion state`, async () => {
+    const h = harness();
+    await start(h);
+    await beginExecution(h);
+    h.ctx.sessionManager.getBranch = () => [{ type: 'custom', customType: 'ponytail-on-stimulants-mode', data: { mode: 'focused' } }];
+    await h.handlers.get(name)({}, h.ctx);
+    const result = await h.handlers.get('before_agent_start')({ systemPrompt: '' });
+    assert.match(result.systemPrompt, /mode: focused/);
+    await h.handlers.get('agent_end')({}, h.ctx);
+    assert.equal(h.sent.length, 0);
+  });
+}
+
+test('bare command preserves active mode; autocomplete offers complete commands', async () => {
+  const h = harness();
+  await start(h);
+  const command = h.commands.get('ponytail-on-stimulants');
+  await command.handler('feral', h.ctx);
+  await command.handler('', h.ctx);
+  assert.match(h.notifications.at(-1)[0], /current feral/);
+  assert.deepEqual(command.getArgumentCompletions('default f').map((item) => item.value), ['default focused', 'default full-send', 'default feral']);
+  assert.equal(command.getArgumentCompletions('no-such-mode'), null);
+});
+
+test('abort and provider error do not trigger a completion follow-up', async () => {
+  for (const stopReason of ['aborted', 'error']) {
+    const h = harness();
+    await start(h);
+    await beginExecution(h);
+    await h.handlers.get('agent_end')({ messages: [{ role: 'assistant', stopReason }] }, h.ctx);
+    assert.equal(h.sent.length, 0);
+  }
+});
+
+test('headless theme proxies do not prevent prompt injection', async () => {
+  const h = harness();
+  Object.defineProperty(h.ctx.ui, 'theme', { get() { throw new Error('not initialized'); } });
+  await start(h);
+  assert.match((await h.handlers.get('before_agent_start')({ systemPrompt: 'base' })).systemPrompt, /full-send/);
+});
+
 test('root package points Pi at the renamed skill collection', () => {
   const root = join(import.meta.dirname, '..', '..');
   const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));

@@ -16,7 +16,7 @@
     "productivity"
   ],
   "skills": "./skills/",
-  "hooks": "./hooks/claude-codex-hooks.json",
+  "hooks": "./hooks/codex-hooks.json",
   "interface": {
     "displayName": "Ponytail on Stimulants",
     "shortDescription": "Small design, complete execution",

@@ -8,7 +8,6 @@ const {
   writeDefaultMode,
 } = require('./ponytail-on-stimulants-config');
 const {
-  clearMode,
   cursorRuleNotice,
   cursorRulePath,
   isCursor,
@@ -24,6 +23,7 @@ let done = false;
 const COMMANDS = new Set([
   '/ponytail-on-stimulants',
   '/ponytail-on-stimulants:ponytail-on-stimulants',
+  '$ponytail-on-stimulants:ponytail-on-stimulants',
 ]);
 
 function commandParts(prompt) {
@@ -54,8 +54,7 @@ function emitCursorRuleNotice(context) {
 }
 
 function deactivate() {
-  if (isCursor) clearMode();
-  else setMode('off');
+  setMode('off');
   writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL ON STIMULANTS MODE OFF');
   return { modeSwitched: false, deactivated: true };
 }
@@ -79,11 +78,15 @@ function requestedMode(context) {
 }
 
 function reportMode(mode) {
-  writeHookOutput(
-    'UserPromptSubmit',
-    mode,
-    `PONYTAIL ON STIMULANTS ACTIVE — mode: ${mode}`,
-  );
+  // Qoder's active ruleset injection already reports the mode. Off has no
+  // ruleset injection, so keep its explicit report instead of going silent.
+  if (!isQoder || mode === 'off') {
+    writeHookOutput(
+      'UserPromptSubmit',
+      mode,
+      `PONYTAIL ON STIMULANTS ACTIVE — mode: ${mode}`,
+    );
+  }
   return { modeSwitched: false, deactivated: false };
 }
 
@@ -149,6 +152,8 @@ function finish() {
 }
 
 process.stdin.on('data', chunk => { input += chunk; });
-process.stdin.on('end', finish);
+// Exit on EOF so the referenced fallback does not delay the normal path.
+process.stdin.on('end', () => { finish(); process.exit(0); });
 process.stdin.on('error', () => { finish(); process.exit(0); });
-setTimeout(() => { finish(); process.exit(0); }, 1000).unref();
+// Keep the timer referenced: swallowed stdin must still trigger the fallback.
+setTimeout(() => { finish(); process.exit(0); }, 1000);

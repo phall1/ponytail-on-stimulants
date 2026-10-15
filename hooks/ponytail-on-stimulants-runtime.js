@@ -14,13 +14,15 @@ function isVsCodeCopilotRoot(pluginRoot) {
 const isCopilot = Boolean(process.env.COPILOT_PLUGIN_DATA) ||
   isVsCodeCopilotRoot(process.env.CLAUDE_PLUGIN_ROOT);
 const isCodex = !isCopilot && Boolean(process.env.PLUGIN_DATA);
-const isQoder = !isCopilot && !isCodex && Boolean(process.env.QODER_SESSION_ID);
+const isQoder = !isCopilot && !isCodex && Boolean(
+  process.env.QODER_SESSION_ID || process.env.QODER_PLUGIN_ROOT || process.env.QODER_PLUGIN_DATA,
+);
 const isCursor = !isCopilot && !isCodex && !isQoder && Boolean(process.env.CURSOR_VERSION);
 
 let stateDir = getClaudeDir();
 if (isCodex) stateDir = process.env.PLUGIN_DATA;
 if (isCopilot) stateDir = process.env.COPILOT_PLUGIN_DATA || getClaudeDir();
-if (isQoder) stateDir = path.join(os.homedir(), '.qoder');
+if (isQoder) stateDir = process.env.QODER_CONFIG_DIR || path.join(os.homedir(), '.qoder');
 if (isCursor) stateDir = path.join(os.homedir(), '.cursor');
 
 const statePath = path.join(stateDir, STATE_FILE);
@@ -57,26 +59,32 @@ function cursorRuleNotice(rule) {
     'rule exists; delete it to let hooks.json manage focused/full-send/feral/off.';
 }
 
-function writeJson(output) {
-  process.stdout.write(JSON.stringify(output));
+// Hook callers exit immediately; async pipe writes can be truncated at exit.
+function writeOut(text) {
+  fs.writeSync(1, text);
 }
 
-function writeCodexOutput(event, mode, context) {
-  const output = { systemMessage: `PONYTAIL_ON_STIMULANTS:${String(mode).toUpperCase()}` };
+function writeJson(output) {
+  writeOut(JSON.stringify(output));
+}
+
+function writeCodexOutput(event, context) {
+  // Codex renders systemMessage as a warning; deliver context without it.
+  const output = {};
   if (context) output.hookSpecificOutput = { hookEventName: event, additionalContext: context };
   writeJson(output);
 }
 
 function writeCursorOutput(event, context) {
-  if (!context) return;
-  const output = { additional_context: context };
-  if (event === 'UserPromptSubmit') output.continue = true;
-  writeJson(output);
+  // Native beforeSubmitPrompt cannot inject context; mode changes apply at
+  // the next sessionStart, the only supported context-delivery event.
+  if (event === 'UserPromptSubmit') return writeJson({ continue: true });
+  if (event === 'SessionStart' && context) return writeJson({ additional_context: context });
 }
 
 function writeHookOutput(event, mode, context = '') {
   if (isCopilot) return writeJson(context ? { additionalContext: context } : {});
-  if (isCodex) return writeCodexOutput(event, mode, context);
+  if (isCodex) return writeCodexOutput(event, context);
   if (isQoder) {
     return writeJson(context ? { hookSpecificOutput: { hookEventName: event, additionalContext: context } } : {});
   }
@@ -84,7 +92,7 @@ function writeHookOutput(event, mode, context = '') {
   if (event === 'SubagentStart') {
     return writeJson({ hookSpecificOutput: { hookEventName: event, additionalContext: context } });
   }
-  process.stdout.write(context);
+  writeOut(context);
 }
 
 function writeStopContinuation(event, prompt) {

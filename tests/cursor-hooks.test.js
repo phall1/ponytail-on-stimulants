@@ -106,6 +106,33 @@ test('cursor hooks template is a valid hooks.json with the two events that can i
   }
 });
 
+test('installer preserves valid JSON with invalid hook shapes byte-for-byte', () => {
+  for (const value of [null, [], 'text', { hooks: null }, { hooks: [] }, { hooks: { sessionStart: {} } }]) {
+    const c = cursorEnv('shape-' + Math.random());
+    const file = path.join(c.project, '.cursor', 'hooks.json');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const raw = JSON.stringify(value);
+    fs.writeFileSync(file, raw);
+    for (const action of ['install', 'uninstall']) {
+      const result = cli([action, '--project'], c.env, c.project);
+      assert.notEqual(result.status, 0);
+      assert.equal(fs.readFileSync(file, 'utf8'), raw);
+    }
+  }
+});
+
+test('ownership matching excludes similarly named user hooks and upstream', () => {
+  const { isPonytailHook } = require('../scripts/cursor-hooks');
+  assert.equal(isPonytailHook({ command: 'node "/p/hooks/ponytail-on-stimulants-activate.js"' }), true);
+  assert.equal(isPonytailHook({ command: 'node "C:\\p\\hooks\\ponytail-on-stimulants-activate.js"' }), true);
+  for (const command of [
+    'node /p/hooks/ponytail-activate.js',
+    'node /p/hooks/my-ponytail-on-stimulants-activate.js',
+    'node /p/hooks/ponytail-on-stimulants-activate.js.backup',
+    'node /p/scripts/ponytail-on-stimulants-activate.js',
+  ]) assert.equal(isPonytailHook({ command }), false, command);
+});
+
 test('isCursor is off outside a Cursor hook process', () => {
   const { isCursor } = require('../hooks/ponytail-on-stimulants-runtime');
   assert.equal(isCursor, false);
@@ -128,12 +155,12 @@ test('sessionStart injects the default-level ruleset as additional_context and k
   assert.equal(fs.existsSync(path.join(c.home, '.claude')), false, 'Cursor state must not land in ~/.claude');
 });
 
-test('sessionStart in off mode emits nothing and writes no flag', () => {
+test('sessionStart in off mode emits nothing and preserves an off tombstone', () => {
   const c = cursorEnv('off', { PONYTAIL_ON_STIMULANTS_DEFAULT_MODE: 'off' });
   const result = run('ponytail-on-stimulants-activate.js', c.env);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, '', 'empty stdout is a no-op for Cursor; "OK" would be a JSON parse error');
-  assert.equal(fs.existsSync(c.flag), false);
+  assert.equal(fs.readFileSync(c.flag, 'utf8'), 'off');
 });
 
 test('Cursor running a Claude-format plugin (CLAUDE_PLUGIN_ROOT set) still gets Cursor JSON', () => {
@@ -146,7 +173,7 @@ test('Cursor running a Claude-format plugin (CLAUDE_PLUGIN_ROOT set) still gets 
   assert.equal(fs.readFileSync(c.flag, 'utf8'), 'full-send');
 });
 
-test('beforeSubmitPrompt tracks /ponytail-on-stimulants commands and delivers the new level ruleset', () => {
+test('beforeSubmitPrompt saves selection for the next chat using only supported output', () => {
   const c = cursorEnv('switch', { PONYTAIL_ON_STIMULANTS_DEFAULT_MODE: 'full-send' });
   writeFlag(c, 'full-send');
 
@@ -156,32 +183,33 @@ test('beforeSubmitPrompt tracks /ponytail-on-stimulants commands and delivers th
   })));
   assert.equal(sw.continue, true, 'must never block the prompt');
   assert.equal(sw.user_message, undefined, 'Cursor shows user_message only for blocked prompts');
-  assert.match(sw.additional_context, /^PONYTAIL ON STIMULANTS MODE CHANGED — mode: focused/);
-  assert.match(sw.additional_context, /normal proportional verification/, 'Cursor has no /ponytail-on-stimulants command, so the level ruleset rides along');
-  assert.doesNotMatch(sw.additional_context, /aggressive reference search/);
+  assert.deepEqual(sw, { continue: true });
+  const next = parse(run('ponytail-on-stimulants-activate.js', c.env));
+  assert.match(next.additional_context, /mode: focused/);
   assert.equal(fs.readFileSync(c.flag, 'utf8'), 'focused');
 
   // Bare /ponytail-on-stimulants reports the live level without resetting it.
   const report = parse(run('ponytail-on-stimulants-mode-tracker.js', c.env, JSON.stringify({ prompt: '/ponytail-on-stimulants' })));
-  assert.deepEqual(report, { continue: true, additional_context: 'PONYTAIL ON STIMULANTS ACTIVE — mode: focused' });
+  assert.deepEqual(report, { continue: true });
   assert.equal(fs.readFileSync(c.flag, 'utf8'), 'focused');
 
   // /ponytail-on-stimulants default persists the default without touching the session level.
   const def = parse(run('ponytail-on-stimulants-mode-tracker.js', c.env, JSON.stringify({ prompt: '/ponytail-on-stimulants default feral' })));
   assert.equal(def.continue, true);
-  assert.match(def.additional_context, /PONYTAIL ON STIMULANTS DEFAULT SET — new sessions start in feral/);
+  assert.equal(def.additional_context, undefined);
   assert.equal(JSON.parse(fs.readFileSync(path.join(c.home, '.config', 'ponytail-on-stimulants', 'config.json'), 'utf8')).defaultMode, 'feral');
   assert.equal(fs.readFileSync(c.flag, 'utf8'), 'focused');
 
-  // /ponytail-on-stimulants off and the plain-language deactivations clear the flag and tell the model.
+  // Persist off as a tombstone so later chat startup does not restore the default.
   const off = parse(run('ponytail-on-stimulants-mode-tracker.js', c.env, JSON.stringify({ prompt: '/ponytail-on-stimulants off' })));
-  assert.deepEqual(off, { continue: true, additional_context: 'PONYTAIL ON STIMULANTS MODE OFF' });
-  assert.equal(fs.existsSync(c.flag), false);
+  assert.deepEqual(off, { continue: true });
+  assert.equal(fs.readFileSync(c.flag, 'utf8'), 'off');
+  for (let i = 0; i < 2; i += 1) assert.equal(run('ponytail-on-stimulants-activate.js', c.env).stdout, '');
 
   writeFlag(c, 'full-send');
   const stop = parse(run('ponytail-on-stimulants-mode-tracker.js', c.env, JSON.stringify({ prompt: 'Stop ponytail-on-stimulants.' })));
-  assert.equal(stop.additional_context, 'PONYTAIL ON STIMULANTS MODE OFF');
-  assert.equal(fs.existsSync(c.flag), false);
+  assert.deepEqual(stop, { continue: true });
+  assert.equal(fs.readFileSync(c.flag, 'utf8'), 'off');
 
   // Ordinary prompts produce no output at all: Cursor treats empty stdout as "carry on".
   writeFlag(c, 'full-send');
@@ -206,8 +234,7 @@ test('with the always-on rule in the workspace the hooks step back instead of du
   for (const prompt of ['/ponytail-on-stimulants feral', '/ponytail-on-stimulants off', 'stop ponytail on stimulants', '/ponytail-on-stimulants']) {
     const out = parse(run('ponytail-on-stimulants-mode-tracker.js', c.env, JSON.stringify({ prompt })));
     assert.equal(out.continue, true);
-    assert.match(out.additional_context, /always-on Cursor rule/, `${prompt} must answer with the rule notice`);
-    assert.doesNotMatch(out.additional_context, /PONYTAIL ON STIMULANTS MODE (CHANGED|OFF)|PONYTAIL ON STIMULANTS ACTIVE/);
+    assert.deepEqual(out, { continue: true }, 'rule notice belongs to sessionStart, not an unsupported prompt field');
     assert.equal(fs.existsSync(c.flag), false);
   }
 
@@ -243,7 +270,7 @@ test('installer merges into an existing ~/.cursor/hooks.json and leaves unrelate
   assert.deepEqual(config.hooks.afterFileEdit, theirs.hooks.afterFileEdit);
   assert.equal(config.hooks.sessionStart[0].command, './hooks/their-session.sh', 'their sessionStart hook stays first and intact');
   assert.equal(config.hooks.sessionStart.length, 2);
-  assert.deepEqual(config.hooks.sessionStart[1], { command: `node "${rootFwd}/hooks/ponytail-on-stimulants-activate.js" --reset`, timeout: 5 });
+  assert.deepEqual(config.hooks.sessionStart[1], { command: `node "${rootFwd}/hooks/ponytail-on-stimulants-activate.js"`, timeout: 5 });
   assert.deepEqual(config.hooks.beforeSubmitPrompt, [{ command: `node "${rootFwd}/hooks/ponytail-on-stimulants-mode-tracker.js"`, timeout: 5 }]);
 
   // Idempotent: a second install replaces ponytail-on-stimulants's entries, never duplicates them.

@@ -14,7 +14,7 @@ const { isShellSafe } = require('../hooks/ponytail-on-stimulants-config');
 
 const ROOT = path.join(__dirname, '..');
 const TEMPLATE = path.join(ROOT, 'hooks', 'cursor-hooks.json');
-const PONYTAIL_HOOK = /ponytail-on-stimulants-[\w-]+\.js/;
+const PONYTAIL_HOOK = /[\\/]hooks[\\/]ponytail-on-stimulants-[\w-]+\.js(?=["'\s]|$)/;
 
 function isPonytailHook(entry) {
   return Boolean(entry && typeof entry.command === 'string' && PONYTAIL_HOOK.test(entry.command));
@@ -35,9 +35,21 @@ function readConfig(file) {
   } catch (e) {
     if (e.code !== 'ENOENT') throw e;
   }
-  if (!config || typeof config !== 'object' || Array.isArray(config)) config = {};
-  if (!config.hooks || typeof config.hooks !== 'object' || Array.isArray(config.hooks)) config.hooks = {};
+  validateConfig(config);
+  if (config.hooks === undefined) config.hooks = {};
   return config;
+}
+
+function isObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function validateConfig(config) {
+  const invalid = !isObject(config) || (config.hooks !== undefined && !isObject(config.hooks));
+  if (invalid) throw new SyntaxError('Expected an object with an optional hooks object');
+  for (const entries of Object.values(config.hooks || {})) {
+    if (!Array.isArray(entries)) throw new SyntaxError('Every hooks event must contain an array');
+  }
 }
 
 function writeConfig(file, config) {

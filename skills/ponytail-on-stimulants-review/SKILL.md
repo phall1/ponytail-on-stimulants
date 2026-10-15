@@ -11,8 +11,11 @@ Review the diff for the smallest sound architecture and complete execution. Chec
 
 ## Format
 
-`L<line>: <tag> <what>. <replacement>.`, or `<file>:L<line>: ...` for
-multi-file diffs.
+Number findings so they can be addressed individually: `1. <file>:L<line>: <tag> <what>. <replacement or required action>.` Cite concrete failure or caller evidence; label unexecuted checks as unverified.
+
+Before recommending deletion or reuse, search source, tests, configuration,
+public interfaces and generated consumers. A missing local caller alone does
+not prove a public entry point is dead.
 
 Tags:
 
@@ -32,7 +35,7 @@ Tags:
 ❌ "This EmailValidator class might be more complex than necessary, have you
 considered whether all these validation rules are needed at this stage?"
 
-✅ `L12-38: stdlib: 27-line validator class. "@" in email, 1 line, real validation is the confirmation mail.`
+✅ `url.js:L12-38: stdlib: hand-written URL splitting. Use new URL(input), retaining the existing invalid-input handling and allowed-protocol checks.`
 
 ✅ `L4: native: moment.js imported for one format call. Intl.DateTimeFormat, 0 deps.`
 

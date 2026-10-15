@@ -1,23 +1,22 @@
 {
-  "_comment": "Reference template — copy the 'hooks' object into your .qoder/settings.json or ~/.qoder/settings.json. Replace PONYTAIL_ON_STIMULANTS_DIR with the path to your ponytail-on-stimulants checkout (e.g. ~/.qoder/plugins/ponytail-on-stimulants or the npm global install path).",
+  "_comment": "Loaded live by .qoder-plugin/plugin.json. Hook launchers read QODER_PLUGIN_ROOT from the environment inside Node; never substitute the install path into shell command text.",
   "hooks": {
     "UserPromptSubmit": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "node PONYTAIL_ON_STIMULANTS_DIR/hooks/ponytail-on-stimulants-mode-tracker.js"
+            "command": "node -e \"require(require('path').join(process.env.QODER_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-mode-tracker.js'))\""
           }
         ]
       }
     ],
-    "PreToolUse": [
+    "SubagentStart": [
       {
-        "matcher": "task|Task",
         "hooks": [
           {
             "type": "command",
-            "command": "node PONYTAIL_ON_STIMULANTS_DIR/hooks/ponytail-on-stimulants-subagent.js"
+            "command": "node -e \"require(require('path').join(process.env.QODER_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-subagent.js'))\""
           }
         ]
       }

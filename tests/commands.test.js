@@ -22,6 +22,15 @@ const commands = [
   'ponytail-on-stimulants-help',
 ];
 
+test('debt command adapters honor ignore rules and block comments', () => {
+  for (const file of ['commands/ponytail-on-stimulants-debt.toml', '.opencode/command/ponytail-on-stimulants-debt.md']) {
+    const content = fs.readFileSync(path.join(root, file), 'utf8');
+    assert.match(content, /--untracked --exclude-standard/);
+    assert.match(content, /line and block comments/);
+    assert.doesNotMatch(content, /grep -rnE/);
+  }
+});
+
 test('pi registers at least the base command', () => {
   assert.ok(commands.includes('ponytail-on-stimulants'), 'expected pi to register a ponytail-on-stimulants command');
 });

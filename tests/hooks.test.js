@@ -66,7 +66,7 @@ test('off activation clears fork state and does not inject instructions', () => 
       args: ['--reset'],
     });
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.stdout, 'OK');
+    assert.equal(result.stdout, '');
     assert.equal(fs.existsSync(path.join(claude, '.ponytail-on-stimulants-active')), false);
   } finally { fs.rmSync(home, { recursive: true, force: true }); }
 });

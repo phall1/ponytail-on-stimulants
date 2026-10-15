@@ -49,10 +49,22 @@ export function resolveSessionMode(entries, fallbackMode = DEFAULT_MODE) {
   return fallback;
 }
 
-export function parsePonytailCommand(text, defaultMode = DEFAULT_MODE) {
+export function completePonytailArgs(prefix) {
+  const typed = String(prefix || '').trimStart();
+  const values = [...RUNTIME_MODES, 'status', ...RUNTIME_MODES.map((mode) => `default ${mode}`)];
+  const matches = values.filter((value) => value.startsWith(typed));
+  return matches.length ? matches.map((value) => ({ value, label: value })) : null;
+}
+
+function bareCommand(fallback, currentMode) {
+  if (currentMode && currentMode !== 'off') return { type: 'status' };
+  return { type: 'set-mode', mode: fallback === 'off' ? DEFAULT_MODE : fallback };
+}
+
+export function parsePonytailCommand(text, defaultMode = DEFAULT_MODE, currentMode = null) {
   const fallback = normalizeMode(defaultMode) || DEFAULT_MODE;
   const normalizedText = String(text || '').trim().toLowerCase();
-  if (!normalizedText) return { type: 'set-mode', mode: fallback === 'off' ? DEFAULT_MODE : fallback };
+  if (!normalizedText) return bareCommand(fallback, currentMode);
 
   const [primary, secondary] = normalizedText.split(/\s+/);
   if (primary === 'status') return { type: 'status' };
@@ -106,18 +118,22 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
     if (!context) return null;
     const ui = context.ui;
     if (!ui || typeof ui.setStatus !== 'function') return null;
-    const theme = ui.theme;
-    if (!theme || typeof theme.fg !== 'function') return null;
-    return { theme, ui };
+    try {
+      const theme = ui.theme;
+      if (!theme || typeof theme.fg !== 'function') return null;
+      return { theme, ui };
+    } catch (_) {
+      // Some headless UI proxies have no initialized theme.
+      return null;
+    }
   }
 
   function syncStatus(ctx) {
-    if (hideStatus) return;
     const surface = statusSurface(ctx);
     if (!surface) return;
     const { theme, ui } = surface;
-    if (currentMode === 'off') {
-      ui.setStatus(COMMAND, '');
+    if (hideStatus || currentMode === 'off') {
+      ui.setStatus(COMMAND, undefined);
       return;
     }
     const icons = { focused: '🎯', 'full-send': '⚡', feral: '🔥' };
@@ -171,7 +187,7 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
   }
 
   function handleCommand(args, ctx) {
-    const parsed = parsePonytailCommand(args, configuredDefaultMode);
+    const parsed = parsePonytailCommand(args, configuredDefaultMode, currentMode);
     if (parsed.type === 'status') {
       notify(ctx, `Ponytail on Stimulants: current ${currentMode} • default ${configuredDefaultMode}`);
       return;
@@ -183,6 +199,7 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
 
   pi.registerCommand(COMMAND, {
     description: `Set mode: ${MODE_LIST}. Commands: status, default <mode>`,
+    getArgumentCompletions: completePonytailArgs,
     handler: handleCommand,
   });
 
@@ -214,26 +231,37 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
     return [];
   }
 
-  pi.on('session_start', async (_event, ctx) => {
-    const entries = sessionEntries(ctx);
+  function restoreSession(ctx) {
     configuredDefaultMode = getDefaultMode();
     hideStatus = getHideStatus();
-    currentMode = resolveSessionMode(entries, configuredDefaultMode);
+    currentMode = resolveSessionMode(sessionEntries(ctx), configuredDefaultMode);
     turnState = createTurnState('');
     finalAssistantMessage = '';
     queuedPass = null;
+    isActive = false;
     syncStatus(ctx);
+  }
+
+  pi.on('session_start', async (_event, ctx) => {
+    restoreSession(ctx);
     if (!getQuietStartup()) notify(ctx, `Ponytail on Stimulants loaded: ${currentMode}`);
   });
+
+  // OMP uses switch/branch events; both hosts use tree navigation.
+  for (const name of ['session_tree', 'session_switch', 'session_branch']) {
+    pi.on(name, async (_event, ctx) => restoreSession(ctx));
+  }
 
   pi.on('agent_start', async (_event, ctx) => {
     isActive = true;
     syncStatus(ctx);
   });
 
-  pi.on('agent_end', async (_event, ctx) => {
+  pi.on('agent_end', async (event, ctx) => {
     isActive = false;
     syncStatus(ctx);
+    const lastAssistant = event?.messages?.filter((message) => message.role === 'assistant').at(-1);
+    if (ctx?.signal?.aborted || ['aborted', 'error'].includes(lastAssistant?.stopReason)) return;
     try {
       await handleSettlement(ctx);
     } catch (_) {
@@ -315,7 +343,7 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
       (command, args, execOptions) => pi.exec(command, args, execOptions),
       ctx && ctx.cwd,
     );
-    if (settlementIsStale(state, mode)) return;
+    if (ctx?.signal?.aborted || settlementIsStale(state, mode)) return;
     const evidence = { tracked, git };
     const jev = await judgeSettlement(state, mode, message, tracked, git);
     if (settlementIsStale(state, mode)) return;
@@ -344,8 +372,23 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
   }
 
   pi.on('before_agent_start', async (event) => {
-    if (!currentMode || currentMode === 'off') return;
+    const sections = event?.systemPromptOptions?.sections;
+    if (currentMode === 'off') {
+      if (sections) delete sections[COMMAND];
+      return;
+    }
+    const instructions = getPonytailInstructions(currentMode);
+    // Pi can track section deltas unless an earlier extension forced an opaque
+    // prompt, in which case the host ignores sections and we must append below.
+    if (sections && typeof sections === 'object' && event.systemPromptOptions.forceSystemPrompt === undefined) {
+      sections[COMMAND] = instructions;
+      return;
+    }
+    // OMP owns an array of prompt parts; never stringify it into comma-separated text.
+    if (Array.isArray(event?.systemPrompt)) {
+      return { systemPrompt: [...event.systemPrompt, instructions] };
+    }
     const base = event?.systemPrompt ? `${event.systemPrompt}\n\n` : '';
-    return { systemPrompt: `${base}${getPonytailInstructions(currentMode)}` };
+    return { systemPrompt: `${base}${instructions}` };
   });
 }

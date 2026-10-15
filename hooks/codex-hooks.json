@@ -1,0 +1,94 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-activate.js'))\" -- --reset",
+            "timeout": 5,
+            "statusMessage": "Loading Ponytail on Stimulants mode..."
+          }
+        ]
+      },
+      {
+        "matcher": "resume|clear|compact|fork",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-activate.js'))\"",
+            "timeout": 5,
+            "statusMessage": "Restoring Ponytail on Stimulants mode..."
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-subagent.js'))\"",
+            "timeout": 5,
+            "statusMessage": "Loading Ponytail on Stimulants mode..."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-mode-tracker.js'))\"",
+            "timeout": 5,
+            "statusMessage": "Tracking Ponytail on Stimulants mode..."
+          },
+          {
+            "type": "command",
+            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-gate.js'))\"",
+            "timeout": 5,
+            "statusMessage": "Resetting Ponytail on Stimulants completion turn..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-gate.js'))\"",
+            "timeout": 5,
+            "statusMessage": "Recording Ponytail on Stimulants tool evidence..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-gate.js'))\"",
+            "timeout": 5,
+            "statusMessage": "Recording Ponytail on Stimulants tool result..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-gate.js'))\"",
+            "timeout": 15,
+            "statusMessage": "Checking Ponytail on Stimulants completion gate..."
+          }
+        ]
+      }
+    ]
+  }
+}

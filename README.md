@@ -32,19 +32,23 @@ codex plugin marketplace add phall1/ponytail-on-stimulants
 codex plugin add ponytail-on-stimulants@ponytail-on-stimulants
 ```
 
-Then open `/hooks`, **review and trust** SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, and Stop, and start a new thread. Untrusted hooks never run.
+Then open `/hooks`, **review and trust** SessionStart, SubagentStart, UserPromptSubmit, PreToolUse, PostToolUse, and Stop, and start a new thread. Untrusted hooks never run. Codex uses `hooks/codex-hooks.json`; Claude retains its separate failure-event configuration.
+
+Invoke skills as `$ponytail-on-stimulants:ponytail-on-stimulants` or `$ponytail-on-stimulants:ponytail-on-stimulants-review`. Append a mode to the primary skill to switch it.
 
 ### OpenCode
 
 ```json
-{ "plugin": ["ponytail-on-stimulants"] }
+{ "plugins": ["ponytail-on-stimulants"] }
 ```
 
 From a checkout:
 
 ```json
-{ "plugin": ["./.opencode/plugins/ponytail-on-stimulants.mjs"] }
+{ "plugins": ["/absolute/path/to/ponytail-on-stimulants"] }
 ```
+
+OpenCode 2 uses `plugins` and the V2 API. OpenCode 1 uses `plugin` and the adapter's legacy `server` entry. Local checkouts include a `.opencode/plugins/index.js` discovery entry.
 
 ### Claude Code
 
@@ -91,9 +95,15 @@ Human input resets the counter. Extension/hook follow-ups do not. Hard caps and 
 |------|------------------------|-------------------|-----------------------------|
 | **Pi** | Per-turn system prompt | Slash commands + skills | **Full.** `agent_end` queues a bounded follow-up before public settlement. |
 | **OMP** | Same Pi extension | Same Pi commands + `skills/` | **Full.** Marketplace install loads `omp.extensions` → the same `pi-extension` + `completion-gate/`. |
-| **Codex** | SessionStart inject | `/ponytail-on-stimulants*` + skills | **Stop hook.** Trust hooks, then Stop `decision: block` plus `reason` becomes a continuation prompt. |
-| **OpenCode** | System transform every turn | Slash commands + skills | **Best-effort.** Tracks tools; uses `session.stopping` when the host has it; otherwise `session.idle` + `session.prompt`. Not Pi's in-loop `agent_end`. |
+| **Codex** | SessionStart inject | Namespaced `$ponytail-on-stimulants:<skill>` | **Stop hook.** Trust hooks; `decision: block` + `reason` continues. Tool outcomes remain unknown where the host supplies no reliable status. |
+| **OpenCode 2 / 1** | V2 context/compaction hooks; V1 system transform | Slash commands + skills | **Best-effort.** V2 execution-success events / V1 idle events queue a bounded prompt. No undocumented in-loop stop hook. |
 | **Claude Code** | SessionStart inject | `/ponytail-on-stimulants*` + skills | **Stop hook.** Stop `additionalContext` continues the turn without a fake `agent_settled` event. |
+| **Copilot CLI / VS Code** | Native namespaced startup hook | Portable skills + MCP; mode selection applies at next startup | None packaged. Prompt-hook output is not context injection. |
+| **Gemini CLI / Qwen Code** | Extension `AGENTS.md` | Extension commands + skills | None packaged. |
+| **Cursor** | Local `sessionStart` context | Mode selection applies on the next chat | None packaged. Native prompt hooks cannot inject context. |
+| **Qoder** | UserPromptSubmit + SubagentStart | Skills + native mode tracking | None packaged. |
+| **Hermes** | Pre-LLM user-turn context | Skills + commands | None packaged; mode is process-wide, including gateway chats. |
+| **Static-rule hosts** | Host-enabled rule file | No mutable native mode | None. |
 
 Jev stays optional, disabled by default, and Pi/OMP-only (in-process). File-hook hosts do not call TypeSafe.
 
@@ -145,7 +155,7 @@ git clone https://github.com/phall1/ponytail-on-stimulants
 node ponytail-on-stimulants/scripts/cursor-hooks.js install
 ```
 
-Static-rule hosts can copy the uniquely named rule from `.cursor/rules/`, `.windsurf/rules/`, `.clinerules/`, `.agents/rules/`, `.qoder/rules/`, `.kiro/steering/`, or `.github/copilot-instructions.md`.
+Static-rule hosts can copy the uniquely named rule from `.cursor/rules/`, `.windsurf/rules/`, `.clinerules/`, `.qoder/rules/`, `.kiro/steering/`, or `.github/copilot-instructions.md`. Enable **Always Apply** where the host requires it. `.agents/rules/` is a convenience copy, not a universal discovery standard. Windsurf's workspace copy explicitly declares `trigger: always_on`.
 
 ### Uninstall and state cleanup
 
@@ -159,7 +169,7 @@ Default-mode resolution:
 2. `~/.config/ponytail-on-stimulants/config.json` (or XDG/Windows equivalent)
 3. `full-send`
 
-Pi and OMP persist mode per session. File-hook native adapters preserve a selected mode across resume/compact events but share one fork-specific mode file per host profile; a fresh startup resets it to the configured default. Concurrent conversations in those hosts can therefore observe the most recent mode switch. Completion-turn evidence is stored per `session_id` so caps stay isolated.
+Pi and OMP persist mode per session. File-hook native adapters preserve a selected mode across resume/compact events but share one fork-specific mode file per host profile; Claude/Codex fresh startup resets it to the configured default; Cursor restores the saved selection (including off) on the next local chat. Copilot and Qoder also retain profile mode until changed. Concurrent conversations in those hosts can therefore observe the most recent mode switch. Completion-turn evidence is stored per `session_id` so caps stay isolated.
 
 ## Development
 
@@ -174,7 +184,7 @@ python3 benchmarks/agentic/complete.py --selftest-offline
 
 `npm test` inherits one upstream pandas-backed correctness check; install pandas in your environment or an isolated virtualenv for the CI-equivalent run.
 
-See [UPSTREAM.md](UPSTREAM.md) for ownership and sync policy, [RELEASE.md](RELEASE.md) for the release checklist, and [benchmarks/completion/](benchmarks/completion/) for fork-specific completion evaluation.
+See [docs/harness-compatibility.md](docs/harness-compatibility.md) for reviewed API sources, adopted upstream fixes, and verification limits. See [UPSTREAM.md](UPSTREAM.md) for ownership and sync policy, [RELEASE.md](RELEASE.md) for the release checklist, and [benchmarks/completion/](benchmarks/completion/) for fork-specific completion evaluation.
 
 ## Attribution
 

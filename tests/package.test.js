@@ -33,10 +33,16 @@ test('npm artifact includes the Agent Plugins core and native runtimes but exclu
   const files = JSON.parse(result.stdout)[0].files.map((entry) => entry.path);
   for (const required of [
     'plugin.json',
+    'server.js',
     'mcp.json',
     'mcp/server.js',
     'skills/ponytail-on-stimulants/SKILL.md',
     'pi-extension/index.js',
+    'pi-extension/package.json',
+    '.opencode/plugins/index.js',
+    'com.github.copilot/hooks/hooks.json',
+    '.codex-plugin/plugin.json',
+    'hooks/codex-hooks.json',
     'completion-gate/index.js',
     'completion-gate/persist.js',
     '.omp-plugin/marketplace.json',

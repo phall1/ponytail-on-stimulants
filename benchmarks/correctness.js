@@ -37,27 +37,25 @@ function identifyTask(task) {
   return null;
 }
 
-// Run a command, return { ok, stderr }.
+// Run a command, return { ok, stderr }, including harness failures printed only to stdout.
 function exec(cmd, opts = {}) {
   try {
     execSync(cmd, { timeout: correctnessTimeoutMs(), encoding: 'utf8', stdio: 'pipe', ...opts });
     return { ok: true, stderr: '' };
   } catch (e) {
-    return { ok: false, stderr: (e.stderr || e.message || '').slice(0, 500) };
+    return { ok: false, stderr: (e.stderr || e.stdout || e.message || '').slice(0, 500) };
   }
 }
 
-// ponytail-on-stimulants: probe once at load; macOS and many Linux images ship python3 only.
+// ponytail-on-stimulants: probe once on first use, preferring pandas for the CSV task.
+// Some hosts provide python3 without pandas but have it installed under python.
 let pythonCmd;
 function python() {
   if (pythonCmd) return pythonCmd;
-  for (const cmd of ['python3', 'python']) {
-    if (exec(`${cmd} -c "import sys"`).ok) {
-      pythonCmd = cmd;
-      return pythonCmd;
-    }
-  }
-  pythonCmd = 'python3';
+  const candidates = ['python3', 'python'];
+  pythonCmd = candidates.find((cmd) => exec(`${cmd} -c "import pandas"`).ok)
+    || candidates.find((cmd) => exec(`${cmd} -c "import sys"`).ok)
+    || 'python3';
   return pythonCmd;
 }
 
@@ -198,10 +196,9 @@ sys.stdout = io.StringIO()
 
 try:
 ${patched.split('\n').map((l) => '    ' + l).join('\n')}
-except Exception as e:
+except Exception:
     sys.stdout = _stdout
-    # If it needs sales.csv in cwd, write it there and retry
-    pass
+    raise
 
 output = sys.stdout.getvalue()
 sys.stdout = _stdout

@@ -10,6 +10,7 @@
 
 const { getPonytailInstructions } = require('./ponytail-on-stimulants-instructions');
 const { readMode, writeHookOutput } = require('./ponytail-on-stimulants-runtime');
+const vm = require('vm');
 
 const mode = readMode();
 
@@ -62,14 +63,26 @@ function finish() {
   } catch (e) {
     // Unparseable payload — fall through and inject to be safe.
   }
-  if (agentType && !matcherRe.test(agentType)) {
+  // A synchronous backtracking regex can starve the stdin fallback timer.
+  // Time-box it separately; a timeout fails open like missing/invalid input.
+  let matches = true;
+  try {
+    if (agentType) {
+      matches = vm.runInNewContext('re.test(s)', { re: matcherRe, s: agentType }, { timeout: 100 });
+    }
+  } catch (e) {
+    matches = true;
+  }
+  if (!matches) {
     process.exit(0);
   }
   inject();
 }
 
 process.stdin.on('data', chunk => { input += chunk; });
-process.stdin.on('end', finish);
+// Exit on EOF so the referenced fallback does not delay the normal path.
+process.stdin.on('end', () => { finish(); process.exit(0); });
 // Never block the session (#443): recover on stdin error or a short fallback.
 process.stdin.on('error', () => { finish(); process.exit(0); });
-setTimeout(() => { finish(); process.exit(0); }, 1000).unref();
+// Keep the timer referenced: swallowed stdin must still trigger the fallback.
+setTimeout(() => { finish(); process.exit(0); }, 1000);

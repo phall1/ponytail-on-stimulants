@@ -14,14 +14,14 @@ Uninstall with the same script and `uninstall`; add `--project` for project scop
 
 ## Events
 
-- `sessionStart` runs `hooks/ponytail-on-stimulants-activate.js`, writes the default mode, and injects the canonical rules through `additional_context`.
-- `beforeSubmitPrompt` runs `hooks/ponytail-on-stimulants-mode-tracker.js`, handles `/ponytail-on-stimulants focused|full-send|feral|off`, and injects the newly selected mode.
+- `sessionStart` runs `hooks/ponytail-on-stimulants-activate.js`, restores the saved selection (or configured default), and injects the canonical rules through `additional_context`.
+- `beforeSubmitPrompt` runs `hooks/ponytail-on-stimulants-mode-tracker.js`, saves `/ponytail-on-stimulants focused|full-send|feral|off` for the **next local chat**. It returns only `continue: true`; this native event does not support context injection. Saved `off` remains off across chats.
 
 Cursor's `continue: true` means “allow this prompt submission”; it is not a stop lifecycle. Cursor therefore receives the behavioral stopping contract but does not run Pi's forced completion passes.
 
 ## Static-rule coexistence
 
-If `<workspace>/.cursor/rules/ponytail-on-stimulants.mdc` exists, the rules are already always-on and cannot be switched off by a hook. The hooks detect it, avoid duplicate/contradictory injection, and return a notice for mode commands. Delete the rule if you want hook-managed modes.
+If `<workspace>/.cursor/rules/ponytail-on-stimulants.mdc` exists, the rules are already always-on and cannot be switched off by a hook. The hooks detect it, avoid duplicate/contradictory injection, and deliver a notice at session startup. Prompt hooks acknowledge commands without changing mode while the rule owns the instructions. Delete the rule if you want hook-managed modes.
 
 The fork uses a different rule filename, state file, hook filename pattern, and installer ownership test from upstream Ponytail, so installing or uninstalling one does not claim the other's state.
 
@@ -34,4 +34,6 @@ The fork uses a different rule filename, state file, hook filename pattern, and 
 
 ## Verification
 
-Run `node --test tests/cursor-hooks.test.js`. For a live check, start a new local Agent chat, ask it to quote the first injected line, switch to `feral`, and verify it reports `PONYTAIL ON STIMULANTS MODE CHANGED — mode: feral`. Then switch `off` and confirm the fork state file is removed.
+Run `node --test tests/cursor-hooks.test.js`. For a live check, start a new local Agent chat and ask it to quote the first injected line. Select `feral`, start another chat, and verify the startup line ends in `mode: feral`. Select `off` and start another chat: no rules are injected, and the fork state file contains `off`. Hooks cannot remove instructions already present in the current chat.
+
+Contract source: [Cursor Hooks](https://cursor.com/docs/hooks). Installer tests also cover malformed JSON shapes and similarly named unrelated hooks; neither may be overwritten or claimed.

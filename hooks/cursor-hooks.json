@@ -3,7 +3,7 @@
   "hooks": {
     "sessionStart": [
       {
-        "command": "node \"PONYTAIL_ON_STIMULANTS_DIR/hooks/ponytail-on-stimulants-activate.js\" --reset",
+        "command": "node \"PONYTAIL_ON_STIMULANTS_DIR/hooks/ponytail-on-stimulants-activate.js\"",
         "timeout": 5
       }
     ],

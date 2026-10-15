@@ -32,9 +32,14 @@ Deps the stdlib or platform already ships, single-implementation interfaces,
 factories with one product, wrappers that only delegate, files exporting one
 thing, dead flags and config, hand-rolled stdlib.
 
+Before a `delete:` finding, search the whole tracked and non-ignored tree,
+including tests, configuration, generated consumers and public entry points.
+Show why the path is unreachable; absence of a source-only grep hit is not proof.
+Prefer reuse of an existing implementation only after checking its contract.
+
 ## Output
 
-One line per finding, ranked: `<tag> <finding>. <replacement or required action>. [path]`.
+One numbered line per finding, ranked: `1. <tag> <finding>. <replacement or required action>. [path:line]`. Cite evidence and distinguish executed checks from unverified claims.
 End with `completion blockers: <N>; net: -<L> lines, -<D> deps possible.` No findings: `Lean and complete. Ship.`
 
 ## Boundaries
