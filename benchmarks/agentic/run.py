@@ -199,6 +199,7 @@ def selftest():
             print(f"{'ok ' if ok else 'XX '} {tid:12} {kind:4} correct={r['correct']} "
                   f"safe={r['safe']} axis={axis}  {r['reason']}")
             failures += 0 if ok else 1
+    failures += _selftest_aggregate()
     failures += _selftest_plugin_dir()
     failures += _selftest_kill()
     print(f"\nselftest: {'all instruments valid' if not failures else str(failures) + ' BROKEN'}")
@@ -209,12 +210,17 @@ def _selftest_plugin_dir():
     fails loudly (sys.exit) instead of silently passing a non-existent path to --plugin-dir."""
     fails = 0
     sentinel = "/tmp/ponytail-on-stimulants-selftest-plugin-dir"
+    previous = os.environ.get("PONYTAIL_ON_STIMULANTS_PLUGIN_DIR")
     os.environ["PONYTAIL_ON_STIMULANTS_PLUGIN_DIR"] = sentinel
     try:
         ok_env = _plugin_dir("ponytail-on-stimulants") == sentinel
     finally:
-        del os.environ["PONYTAIL_ON_STIMULANTS_PLUGIN_DIR"]
-    print(f"{'ok ' if ok_env else 'XX '} plugin_dir   env  override honored")
+        if previous is None:
+            del os.environ["PONYTAIL_ON_STIMULANTS_PLUGIN_DIR"]
+        else:
+            os.environ["PONYTAIL_ON_STIMULANTS_PLUGIN_DIR"] = previous
+    ok_env = ok_env and os.environ.get("PONYTAIL_ON_STIMULANTS_PLUGIN_DIR") == previous
+    print(f"{'ok ' if ok_env else 'XX '} plugin_dir   env  override honored and restored")
     fails += 0 if ok_env else 1
     missing = "ponytail-on-stimulants-does-not-exist-xyz"          # no env, no cache entry -> must sys.exit
     try:
@@ -320,6 +326,11 @@ def run_cell(task_id, arm, model, workdir: Path):
         extra = ARMS[arm]()                             # baseline -> None; yagni-oneliner -> the prompt
         if extra: append = extra + "\n\n" + NO_RUN
     cmd += ["--append-system-prompt", append]
+    _run_claude(cmd, workdir)
+    return score_workspace(task_id, arm, model, workdir)
+
+
+def _run_claude(cmd, workdir: Path):
     out_path, err_path = workdir / "_claude.json", workdir / "_claude.stderr.txt"
     # stdout -> file, never a PIPE: on Windows a hung agent's child processes can hold a stdout PIPE
     # open forever, so subprocess.run(timeout=) never fires and the worker freezes. Writing to a file
@@ -327,7 +338,10 @@ def run_cell(task_id, arm, model, workdir: Path):
     # tree -- never a blanket kill, which would also take down this Claude Code session.
     try:
         with open(out_path, "wb") as so, open(err_path, "wb") as se:
-            proc = subprocess.Popen(cmd, cwd=str(workdir), stdout=so, stderr=se,
+            # Claude's documented flags disable inherited AGENTS.md/CLAUDE.md and auto-memory.
+            # Every arm, including baseline, must be isolated from the repo rules and user memory.
+            env = {**os.environ, "CLAUDE_CODE_DISABLE_CLAUDE_MDS": "1", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}
+            proc = subprocess.Popen(cmd, cwd=str(workdir), stdout=so, stderr=se, env=env,
                                     start_new_session=(os.name != "nt"))
             try:
                 proc.wait(timeout=CELL_TIMEOUT)
@@ -338,35 +352,54 @@ def run_cell(task_id, arm, model, workdir: Path):
                 se.write(f"\n[KILLED after {CELL_TIMEOUT}s timeout]".encode())
     except Exception as e:
         out_path.write_text(json.dumps({"error": str(e)[:300]}), encoding="utf-8")
-    return score_workspace(task_id, arm, model, workdir)
+
+
+def _cell_rates(cells):
+    n = len(cells)
+    # Crashed cells lack scores; keep them in the denominator as failures.
+    return {"safe_rate": round(sum(c.get("safe") or 0 for c in cells) / n, 3),
+            "correct_rate": round(sum(c.get("correct") or 0 for c in cells) / n, 3),
+            "wrote_tests_rate": round(sum(1 for c in cells if c.get("test_files", 0) > 0) / n, 3)}
+
+
+def _loc_summary(cells):
+    loc_cells = [c for c in cells if c.get("total_loc", 0) > 0]  # LOC only where code was delivered
+    nl = len(loc_cells)
+    return {"wrote_file_rate": round(nl / len(cells), 3),
+            "total_loc_median": statistics.median(c["total_loc"] for c in loc_cells) if nl else 0,
+            "src_loc_median": statistics.median(c["src_loc"] for c in loc_cells) if nl else 0,
+            "total_loc_max": max((c["total_loc"] for c in loc_cells), default=0),
+            "src_files_median": statistics.median(c["src_files"] for c in loc_cells) if nl else 0}
+
+
+def _mean_metric(cells, key, digits=None, divisor=1):
+    values = [c[key] / divisor if divisor != 1 else c[key] for c in cells if c.get(key) is not None]
+    return round(statistics.mean(values), digits) if values else None
+
+
+def _usage_summary(cells):
+    tokens = [(c.get("in_tokens") or 0) + (c.get("out_tokens") or 0) + (c.get("cache_tokens") or 0)
+              for c in cells if c.get("out_tokens") is not None]
+    return {"cost_mean": _mean_metric(cells, "cost", 4),
+            "out_tokens_mean": _mean_metric(cells, "out_tokens"),
+            "total_tokens_mean": round(statistics.mean(tokens)) if tokens else None,
+            "time_s_mean": _mean_metric(cells, "duration_ms", 1, divisor=1000)}
+
 
 def aggregate(results):
     groups = defaultdict(list)
     for r in results: groups[(r["task"], r["arm"], r["model"])].append(r)
-    rows = []
-    for (t, a, m), cells in sorted(groups.items()):
-        n = len(cells)
-        costs = [c["cost"] for c in cells if c.get("cost") is not None]
-        loc_cells = [c for c in cells if c.get("total_loc", 0) > 0]   # LOC only where code was delivered
-        nl = len(loc_cells)
-        rows.append({"task": t, "arm": a, "model": m, "n": n,
-                     "safe_rate": round(sum(c["safe"] for c in cells) / n, 3),
-                     "correct_rate": round(sum(c["correct"] for c in cells) / n, 3),
-                     "wrote_file_rate": round(nl / n, 3),
-                     "total_loc_median": statistics.median(c["total_loc"] for c in loc_cells) if nl else 0,
-                     "src_loc_median": statistics.median(c["src_loc"] for c in loc_cells) if nl else 0,
-                     "total_loc_max": max((c["total_loc"] for c in loc_cells), default=0),
-                     "src_files_median": statistics.median(c["src_files"] for c in loc_cells) if nl else 0,
-                     "wrote_tests_rate": round(sum(1 for c in cells if c.get("test_files", 0) > 0) / n, 3),
-                     "cost_mean": round(statistics.mean(costs), 4) if costs else None,
-                     "out_tokens_mean": (round(statistics.mean([c["out_tokens"] for c in cells if c.get("out_tokens") is not None]))
-                                         if any(c.get("out_tokens") is not None for c in cells) else None),
-                     "total_tokens_mean": (round(statistics.mean([(c.get("in_tokens") or 0) + (c.get("out_tokens") or 0) + (c.get("cache_tokens") or 0)
-                                                                   for c in cells if c.get("out_tokens") is not None]))
-                                           if any(c.get("out_tokens") is not None for c in cells) else None),
-                     "time_s_mean": (round(statistics.mean([c["duration_ms"] / 1000 for c in cells if c.get("duration_ms") is not None]), 1)
-                                     if any(c.get("duration_ms") is not None for c in cells) else None)})
-    return rows
+    return [{"task": t, "arm": a, "model": m, "n": len(cells),
+             **_cell_rates(cells), **_loc_summary(cells), **_usage_summary(cells)}
+            for (t, a, m), cells in sorted(groups.items())]
+
+
+def _selftest_aggregate():
+    crashed = {"task": "t", "arm": "a", "model": "m", "error": "boom"}
+    row = aggregate([crashed])[0]
+    ok = row["safe_rate"] == 0 and row["correct_rate"] == 0
+    print(f"{'ok ' if ok else 'XX '} aggregate    a crashed cell counts as failed")
+    return 0 if ok else 1
 
 def print_table(rows):
     by = defaultdict(list)

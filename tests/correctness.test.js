@@ -42,6 +42,16 @@ test('email: no code block fails', () => {
   assert.equal(result.pass, false);
 });
 
+test('email: assertion failures printed only to stdout retain their reason', () => {
+  const result = check(
+    'Write me a Python function that validates email addresses.',
+    'python',
+    'def validate_email(email):\n    return True',
+  );
+  assert.equal(result.pass, false);
+  assert.match(result.reason, /FAIL: accepted invalid: no-at-sign/);
+});
+
 // --- Debounce ---
 
 test('debounce: correct implementation passes', () => {
@@ -86,6 +96,29 @@ print(df['amount'].sum())`,
   assert.equal(result.score, 1);
 });
 
+test('csv: an exception reports the original error', () => {
+  const result = check(
+    "Write Python code that reads sales.csv and sums the 'amount' column.",
+    'python',
+    'raise RuntimeError("csv-boom")',
+  );
+  assert.equal(result.pass, false);
+  assert.equal(result.score, 0);
+  assert.match(result.reason, /RuntimeError: csv-boom/);
+  assert.doesNotMatch(result.reason, /AttributeError/);
+});
+
+test('csv: printing the expected result before throwing still fails', () => {
+  const result = check(
+    "Write Python code that reads sales.csv and sums the 'amount' column.",
+    'python',
+    'print(351)\nraise RuntimeError("after-print")',
+  );
+  assert.equal(result.pass, false);
+  assert.equal(result.score, 0);
+  assert.match(result.reason, /RuntimeError: after-print/);
+});
+
 test('csv: code that prints wrong value fails', () => {
   const result = check(
     "Write Python code that reads sales.csv and sums the 'amount' column.",
@@ -94,6 +127,7 @@ test('csv: code that prints wrong value fails', () => {
   );
   assert.equal(result.pass, false);
   assert.equal(result.score, 0);
+  assert.match(result.reason, /FAIL: output was: '999\\n'/);
 });
 
 test('csv: value containing 351 as substring fails (e.g. 13510)', () => {
