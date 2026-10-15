@@ -87,7 +87,7 @@ test('canonical plugin and MCP manifests conform to the official closed schemas'
   const mcp = readJson(path.join(root, 'mcp.json'));
   assert.deepEqual(validate(plugin, pluginSchema, pluginSchema), []);
   assert.deepEqual(validate(mcp, mcpSchema, mcpSchema), []);
-  assert.equal(plugin.version, '0.3.0');
+  assert.equal(plugin.version, require('../package.json').version);
   assert.equal(plugin.name, 'ponytail-on-stimulants');
 });
 
