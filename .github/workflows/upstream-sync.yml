@@ -18,15 +18,17 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22'
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+          node-version: '24'
+      - run: npm install -g npm@12.2.0
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
-          python-version: '3.12'
+          version: '0.13.1'
+          python-version: '3.15.0'
       - name: Fetch canonical upstream
         run: |
           git remote add upstream https://github.com/DietrichGebert/ponytail.git 2>/dev/null || git remote set-url upstream https://github.com/DietrichGebert/ponytail.git
@@ -56,7 +58,7 @@ jobs:
             echo "clean=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          python3 - <<'PY'
+          uv run python - <<'PY'
           import os, re
           from pathlib import Path
           p = Path('UPSTREAM.md')
@@ -91,17 +93,14 @@ jobs:
           if [[ "$existing" == 0 ]]; then
             gh issue create --title "$title" --body "Automated reconciliation found conflicts and did not push a branch. Conflicting paths:\n\n\`\`\`\n$conflicts\n\`\`\`\n\nFollow UPSTREAM.md and reconcile behavioral policy deliberately."
           fi
-      - name: Install validation dependencies
-        if: steps.merge.outputs.clean == 'true' || steps.merge.outputs.clean == 'existing'
-        run: pip install pandas==2.3.3
       - name: Validate reconciled fork
         if: steps.merge.outputs.clean == 'true' || steps.merge.outputs.clean == 'existing'
         run: |
           npm run check
-          npm test
+          uv run --with pandas==3.0.6 -- npm test
           npm run test:completion
-          python3 benchmarks/agentic/run.py --selftest
-          python3 benchmarks/agentic/complete.py --selftest-offline
+          uv run --script benchmarks/agentic/run.py --selftest
+          uv run --script benchmarks/agentic/complete.py --selftest-offline
       - name: Push temporary branch and open PR
         if: steps.merge.outputs.clean == 'true'
         env:

@@ -8,10 +8,10 @@ Releases are deliberate; the fork never publishes under an upstream identity.
 4. Run:
    ```sh
    npm run check
-   npm test
+   uv run --with pandas==3.0.6 -- npm test
    npm run test:completion
-   python3 benchmarks/agentic/run.py --selftest
-   python3 benchmarks/agentic/complete.py --selftest-offline
+   uv run --script benchmarks/agentic/run.py --selftest
+   uv run --script benchmarks/agentic/complete.py --selftest-offline
    npm pack --dry-run
    ```
 5. Inspect the package contents, final diff, repository status, README install commands, fork IDs, MIT attribution, Agent Plugins manifest, fixed-layout skills, and packed-artifact MCP smoke coverage.
@@ -23,3 +23,18 @@ Releases are deliberate; the fork never publishes under an upstream identity.
 11. Record genuine completion benchmark results separately from inherited upstream results.
 
 Do not release from a dirty tree, a failed check, an unresolved upstream conflict, or a manual workflow that bypasses the tag/version contract.
+
+## v0.4.3 maintenance release
+
+- Validated the unchanged OpenCode adapter against OpenCode **2.0.32** in an
+  isolated configuration: the local package activates and registers all six
+  fork-namespaced commands and skills, without model requests. See
+  [the compatibility review](docs/harness-compatibility.md#verification-boundaries)
+  for the boundary between loader/regression coverage and live model behavior.
+- Refreshed CI to Node 24 LTS, npm 12.2.0, uv 0.13.1, Python 3.15.0 and pandas
+  3.0.6; pinned current checkout, setup-node, setup-uv and artifact actions by
+  commit. The trusted-publishing environment, exact tag/main ancestry gates and
+  validated tarball publication remain unchanged.
+- Root and Pi packages remain dependency-free. Prompt bodies, completion
+  behavior, fork namespace and upstream/MIT attribution are unchanged; all 12
+  release-version entries are synchronized at **0.4.3**.

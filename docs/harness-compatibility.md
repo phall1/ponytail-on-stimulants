@@ -122,6 +122,13 @@ compliance. File-hook modes remain profile-shared; completion counters are
 session-scoped. OpenCode mode is also profile-shared, and its continuation is
 best-effort after the execution boundary, not an in-loop guarantee.
 
+The **v0.4.3** maintenance pass revalidated the unchanged OpenCode adapter on
+**2.0.32** (2026-10-17). With disposable HOME/XDG directories and an isolated
+local service, the package loaded through `server.js`, reported active, and
+listed all six fork commands and skills through the authenticated API. No
+model request was made. The full regression suite and completion/agentic
+self-tests remain separate evidence, not a claim of live coding compliance.
+
 ## Complexity evidence
 
 Measured with lizard 1.24.1; unchanged pre-existing hotspots are not refactored.
