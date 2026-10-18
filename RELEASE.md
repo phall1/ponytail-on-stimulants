@@ -31,10 +31,10 @@ Do not release from a dirty tree, a failed check, an unresolved upstream conflic
   fork-namespaced commands and skills, without model requests. See
   [the compatibility review](docs/harness-compatibility.md#verification-boundaries)
   for the boundary between loader/regression coverage and live model behavior.
-- Refreshed CI to Node 24 LTS, uv 0.13.1, Python 3.15.0 and pandas 3.0.6; pinned
-  current checkout, setup-node, setup-uv and artifact actions by commit. The
-  trusted-publishing environment, exact tag/main ancestry gates and validated
-  tarball publication remain unchanged.
+- Refreshed CI to Node 24 LTS, npm 12.2.0, uv 0.13.1, Python 3.15.0 and pandas
+  3.0.6; pinned current checkout, setup-node, setup-uv and artifact actions by
+  commit. The trusted-publishing environment, exact tag/main ancestry gates and
+  validated tarball publication remain unchanged.
 - Root and Pi packages remain dependency-free. Prompt bodies, completion
   behavior, fork namespace and upstream/MIT attribution are unchanged; all 12
   release-version entries are synchronized at **0.4.3**.

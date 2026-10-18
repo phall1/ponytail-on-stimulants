@@ -30,7 +30,8 @@ test('npm package ships the advertised cleanup script', () => {
 test('npm artifact includes the Agent Plugins core and native runtimes but excludes tests', () => {
   const result = spawnSync('npm', ['pack', '--dry-run', '--json'], { cwd: root, encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
-  const files = JSON.parse(result.stdout)[0].files.map((entry) => entry.path);
+  // npm 11 emits an array; npm 12 keys results by package name.
+  const files = Object.values(JSON.parse(result.stdout))[0].files.map((entry) => entry.path);
   for (const required of [
     'plugin.json',
     'server.js',

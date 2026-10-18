@@ -23,7 +23,8 @@ test('packed plugin runs its dependency-free MCP server over stdio', () => {
       timeout: 30_000,
     });
     assert.equal(packed.status, 0, packed.stderr);
-    const filename = JSON.parse(packed.stdout)[0].filename;
+    // npm 11 emits an array; npm 12 keys results by package name.
+    const filename = Object.values(JSON.parse(packed.stdout))[0].filename;
     const archive = path.join(temp, filename);
     const extracted = path.join(temp, 'extracted');
     fs.mkdirSync(extracted);
