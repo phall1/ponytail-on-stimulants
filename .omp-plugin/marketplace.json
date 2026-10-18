@@ -8,14 +8,14 @@
   },
   "metadata": {
     "description": "Ponytail on Stimulants marketplace for Oh My Pi. Ships the same Pi completion gate via package.json omp.extensions.",
-    "version": "0.4.2"
+    "version": "0.4.3"
   },
   "plugins": [
     {
       "name": "ponytail-on-stimulants",
       "description": "Minimal architecture. Maximal execution. Completion discipline for coding agents. Shares Pi's bounded completion continuation gate on Oh My Pi.",
       "source": "./",
-      "version": "0.4.2",
+      "version": "0.4.3",
       "category": "productivity",
       "homepage": "https://github.com/phall1/ponytail-on-stimulants",
       "repository": "https://github.com/phall1/ponytail-on-stimulants",
