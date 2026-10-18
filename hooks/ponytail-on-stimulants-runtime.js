@@ -26,6 +26,7 @@ if (isQoder) stateDir = process.env.QODER_CONFIG_DIR || path.join(os.homedir(), 
 if (isCursor) stateDir = path.join(os.homedir(), '.cursor');
 
 const statePath = path.join(stateDir, STATE_FILE);
+const harnessName = isCopilot ? 'copilot' : isCodex ? 'codex' : isQoder ? 'qoder' : isCursor ? 'cursor' : 'claude';
 
 function setMode(mode) {
   const normalized = normalizeMode(mode);
@@ -114,6 +115,7 @@ module.exports = {
   clearMode,
   cursorRuleNotice,
   cursorRulePath,
+  harnessName,
   isCodex,
   isCopilot,
   isCursor,

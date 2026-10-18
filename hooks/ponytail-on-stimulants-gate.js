@@ -4,7 +4,10 @@
 // Tracks tool evidence across hook processes, then on Stop uses the shared
 // completion-gate decision to continue the turn. This is not Pi's in-process
 // agent_end follow-up: Claude injects additionalContext; Codex blocks stop and
-// turns `reason` into a continuation prompt. Fail-open always.
+// turns `reason` into a continuation prompt. A settled turn (no further
+// pass) appends a one-line recap to the shared index. Fail-open always.
+
+const fs = require('fs');
 
 const {
   createSpawnExec,
@@ -14,8 +17,9 @@ const {
   runCompletionDecision,
 } = require('../completion-gate');
 const { loadTurnState, resetTurnState, saveTurnState, turnStatePath } = require('../completion-gate/persist');
+const { recordRecap } = require('../completion-gate/recap');
 const { getDefaultMode } = require('./ponytail-on-stimulants-config');
-const { isCodex, readMode, stateDir, writeStopContinuation } = require('./ponytail-on-stimulants-runtime');
+const { harnessName, isCodex, readMode, stateDir, writeStopContinuation } = require('./ponytail-on-stimulants-runtime');
 
 let input = '';
 let done = false;
@@ -78,22 +82,59 @@ function handleToolEnd(data, isError) {
 }
 
 async function handleStop(data) {
-  const mode = currentMode();
-  if (!mode || mode === 'off' || mode === 'focused') return;
   const file = turnFile(data);
   const state = loadTurnState(file);
-  const decision = await runCompletionDecision({
-    mode,
-    state,
-    exec: createSpawnExec(),
-    cwd: cwd(data),
-  });
-  if (!decision) {
+  const exec = createSpawnExec();
+  const mode = currentMode();
+  const decision = mode && mode !== 'off' && mode !== 'focused'
+    ? await runCompletionDecision({ mode, state, exec, cwd: cwd(data) })
+    : null;
+  if (decision) {
     saveTurnState(file, state);
+    writeStopContinuation(eventName(data) || 'Stop', decision.prompt);
     return;
   }
+  await recordRecap({
+    harness: harnessName,
+    cwd: cwd(data),
+    session: sessionId(data),
+    state,
+    reply: data.last_assistant_message || data.lastAssistantMessage || transcriptReply(data.transcript_path),
+    exec,
+  });
   saveTurnState(file, state);
-  writeStopContinuation(eventName(data) || 'Stop', decision.prompt);
+}
+
+// Older Claude Code Stop payloads omit last_assistant_message; read only the
+// transcript tail for the newest assistant text.
+function transcriptReply(file) {
+  if (!file) return '';
+  try {
+    const fd = fs.openSync(file, 'r');
+    try {
+      const size = fs.fstatSync(fd).size;
+      const length = Math.min(size, 256 * 1024);
+      const buffer = Buffer.alloc(length);
+      fs.readSync(fd, buffer, 0, length, size - length);
+      return buffer.toString('utf8').split(/\r?\n/).reverse().map(assistantText).find(Boolean) || '';
+    } finally {
+      fs.closeSync(fd);
+    }
+  } catch (_) {
+    return '';
+  }
+}
+
+function assistantText(line) {
+  try {
+    const entry = JSON.parse(line);
+    const content = entry && entry.type === 'assistant' && entry.message && entry.message.content;
+    if (typeof content === 'string') return content;
+    if (!Array.isArray(content)) return '';
+    return content.filter((part) => part && part.type === 'text').map((part) => part.text || '').join('\n');
+  } catch (_) {
+    return '';
+  }
 }
 
 async function dispatch(data) {

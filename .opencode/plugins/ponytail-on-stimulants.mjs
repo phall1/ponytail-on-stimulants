@@ -68,7 +68,7 @@ function withoutMentions(items) {
 
 async function continueSession(host, send, id, signal) {
   try {
-    const decision = await host.decide(readMode(), id);
+    const decision = await host.settle(readMode(), id);
     if (decision && !signal.aborted) await send(id, decision.prompt);
   } catch (_) { /* A rejected decision or delivery must not disable later sessions. */ }
 }
@@ -80,6 +80,7 @@ async function consumeEvents(events, host, send, directory, signal) {
       if (event.location?.directory && event.location.directory !== directory) continue;
       const id = eventSessionId(event);
       if (['session.deleted', 'session.execution.failed', 'session.execution.interrupted'].includes(event.type)) host.remove(id);
+      if (event.type === 'session.text.ended') host.recordReply(id, event.data?.text);
       if (event.type !== 'session.execution.succeeded') continue;
       await continueSession(host, send, id, signal);
     }
@@ -132,6 +133,7 @@ export default {
 
   async server({ client, directory } = {}) {
     const host = createCompletionHost({ directory });
+    const assistantMessages = new Set();
     const log = (level, message) => {
       try { client?.app?.log({ body: { service: COMMAND, level, message } }); } catch (_) {}
     };
@@ -171,8 +173,11 @@ export default {
           if (event.type === 'session.deleted') host.remove(id);
           // Compatibility for older hosts that include text on this event.
           if (event.type === 'message.updated' && messageRole(event) === 'user' && messageText(event)) host.reset(id, messageText(event));
+          if (event.type === 'message.updated' && messageRole(event) === 'assistant') assistantMessages.add(event.properties.info.id);
+          const part = event.type === 'message.part.updated' && event.properties?.part;
+          if (part?.type === 'text' && assistantMessages.has(part.messageID)) host.recordReply(part.sessionID, part.text);
           if (event.type !== 'session.idle') return;
-          const decision = await host.decide(readMode(), id);
+          const decision = await host.settle(readMode(), id);
           if (decision) await promptSession(client, id, decision.prompt);
         } catch (_) {}
       },

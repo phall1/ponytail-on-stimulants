@@ -107,6 +107,24 @@ Human input resets the counter. Extension/hook follow-ups do not. Hard caps and 
 
 Jev stays optional, disabled by default, and Pi/OMP-only (in-process). File-hook hosts do not call TypeSafe.
 
+### Recap index
+
+Every host with an operational gate (Pi, OMP, Codex, OpenCode, Claude Code) appends one line per settled turn, in every mode, to a local append-only TSV: `${XDG_STATE_HOME:-~/.local/state}/ponytail-on-stimulants/recaps.tsv` (`%LOCALAPPDATA%` on Windows). A turn is settled when no completion pass is queued; aborted and interrupted turns are skipped.
+
+```text
+time	harness	project	branch	session	stats	ask → outcome
+2026-10-18T09:41:03Z	opencode	~/workspace/api	fix-parser	ses_1a2b3c4d5e6f	dirty=2 tools=31 errors=0	Fix the parser bug → Fixed the parser and added a regression test.
+```
+
+The recap is deterministic: the first line of the request plus the first sentence of the final reply, markdown-stripped, secret-redacted, and truncated. No model call. Grep it like any log:
+
+```sh
+rg api ~/.local/state/ponytail-on-stimulants/recaps.tsv | tail
+column -ts$'\t' ~/.local/state/ponytail-on-stimulants/recaps.tsv | tail -20
+```
+
+Set `PONYTAIL_ON_STIMULANTS_RECAP=0` (or `"recap": false` in `config.json`) to disable it, and `PONYTAIL_ON_STIMULANTS_RECAP_FILE` (or `"recapFile"`) to move it. The file holds task and reply excerpts; it never leaves the machine.
+
 ### Experimental Jev judge
 
 Jev is never the coding model. On feral's second stop attempt, Pi/OMP can send compact structured state to TypeSafe's System One API. Code calculates deterministic facts; Jev judges fuzzy completion questions; the coding agent reasons and executes.

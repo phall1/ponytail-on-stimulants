@@ -28,6 +28,7 @@ const {
   summarizeTrackedEvidence,
 } = require('../completion-gate/index.js');
 const { createJevJudge } = require('../completion-gate/jev.js');
+const { recordRecap } = require('../completion-gate/recap.js');
 
 export { filterSkillBodyForMode };
 export const readDefaultMode = getDefaultMode;
@@ -263,11 +264,23 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
     const lastAssistant = event?.messages?.filter((message) => message.role === 'assistant').at(-1);
     if (ctx?.signal?.aborted || ['aborted', 'error'].includes(lastAssistant?.stopReason)) return;
     try {
-      await handleSettlement(ctx);
+      if (!await handleSettlement(ctx)) await recapSettledTurn(ctx);
     } catch (_) {
       // Completion gating is advisory and fail-open; it must never trap a session.
     }
   });
+
+  function recapSettledTurn(ctx) {
+    const session = ctx?.sessionManager?.getSessionId?.() || 'default';
+    return recordRecap({
+      harness: options.harness || 'pi',
+      cwd: ctx && ctx.cwd,
+      session,
+      state: turnState,
+      reply: finalAssistantMessage,
+      exec: (command, args, execOptions) => pi.exec(command, args, execOptions),
+    });
+  }
 
   pi.on('message_end', async (event) => {
     if (event?.message?.role === 'assistant') finalAssistantMessage = messageText(event.message);
@@ -333,20 +346,21 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
     };
   }
 
+  // Resolves false only when the turn settled without queueing a pass.
   async function handleSettlement(ctx) {
     const state = turnState;
     const mode = currentMode;
     const message = finalAssistantMessage;
     const tracked = summarizeTrackedEvidence(state);
-    if (!shouldRunCompletionPass(mode, state, { tracked })) return;
+    if (!shouldRunCompletionPass(mode, state, { tracked })) return false;
     const git = await collectGitEvidence(
       (command, args, execOptions) => pi.exec(command, args, execOptions),
       ctx && ctx.cwd,
     );
-    if (ctx?.signal?.aborted || settlementIsStale(state, mode)) return;
+    if (ctx?.signal?.aborted || settlementIsStale(state, mode)) return true;
     const evidence = { tracked, git };
     const jev = await judgeSettlement(state, mode, message, tracked, git);
-    if (settlementIsStale(state, mode)) return;
+    if (settlementIsStale(state, mode)) return true;
     const maximum = maxContinuations(mode);
     const prompt = buildContinuationPrompt({
       mode,
@@ -355,7 +369,7 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
       evidence,
       jev,
     });
-    if (!claimContinuation(state, prompt, maximum)) return;
+    if (!claimContinuation(state, prompt, maximum)) return false;
     pi.appendEntry('ponytail-on-stimulants-completion-pass', {
       mode,
       pass: state.continuations,
@@ -369,6 +383,7 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
     queuedPass = { pass: state.continuations, maximum };
     syncStatus(ctx);
     notify(ctx, `Completion pass ${state.continuations}/${maximum} queued.`);
+    return true;
   }
 
   pi.on('before_agent_start', async (event) => {

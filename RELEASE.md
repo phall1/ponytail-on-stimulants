@@ -24,6 +24,21 @@ Releases are deliberate; the fork never publishes under an upstream identity.
 
 Do not release from a dirty tree, a failed check, an unresolved upstream conflict, or a manual workflow that bypasses the tag/version contract.
 
+## v0.5.0 recap index
+
+- Every operational gate (Pi/OMP `agent_end`, Claude/Codex `Stop`, OpenCode V2
+  execution-success and V1 idle events) appends one deterministic TSV line per
+  settled turn, in every mode, to
+  `${XDG_STATE_HOME:-~/.local/state}/ponytail-on-stimulants/recaps.tsv`:
+  time, harness, project, branch, session, turn stats, and `ask → outcome`.
+  Turns with a queued completion pass, aborted, interrupted and continuation
+  turns are not recapped; each turn is recorded once across hook processes.
+- No model call; text is markdown-stripped, secret-redacted and truncated.
+  `PONYTAIL_ON_STIMULANTS_RECAP=0` / `"recap": false` disables it and
+  `PONYTAIL_ON_STIMULANTS_RECAP_FILE` / `"recapFile"` relocates it.
+- Test entry points preload `tests/isolate-recaps.cjs` so the suite never writes
+  to a real index. Prompt bodies and completion-pass behavior are unchanged.
+
 ## v0.4.3 maintenance release
 
 - Validated the unchanged OpenCode adapter against OpenCode **2.0.32** in an
