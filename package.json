@@ -1,6 +1,6 @@
 {
   "name": "ponytail-on-stimulants",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Minimal architecture. Maximal execution. Completion discipline for coding agents.",
   "keywords": ["agent-plugin", "opencode-plugin", "opencode", "coding-agent", "completion", "mcp", "pi-package", "pi", "omp", "oh-my-pi", "skills", "qoder"],
   "license": "MIT",
@@ -51,6 +51,7 @@
     "pi-extension/package.json",
     "scripts/uninstall.js",
     "scripts/cursor-hooks.js",
+    "scripts/codex-hooks.js",
     "LICENSE",
     "UPSTREAM.md",
     "RELEASE.md"

@@ -2,7 +2,9 @@
 
 // One line per settled turn in an append-only TSV that people and tools can
 // grep: time, harness, project, branch, session, stats, "ask → outcome".
-// Deterministic (no model call) and fail-open like the rest of the gate.
+// Deterministic (no model call) and fail-open like the rest of the gate. When a
+// completion pass ran, the outcome is the turn's answer before that pass
+// (`state.answer`), not the pass's verification note.
 
 const fs = require('fs');
 const os = require('os');
@@ -13,11 +15,13 @@ const { getRecapEnabled, getRecapPath } = require('../hooks/ponytail-on-stimulan
 const ASK_LIMIT = 80;
 const OUTCOME_LIMIT = 160;
 
-function oneLine(text, limit) {
-  const line = String(text || '')
+// Outcome lines that are only labels ("Completion check:") say nothing.
+function oneLine(text, limit, { skipLabels = false } = {}) {
+  const lines = String(text || '')
     .split(/\r?\n/)
     .map((item) => item.replace(/^\s*(?:#{1,6}\s+|[-*+>]\s+|\d+[.)]\s+)/, '').replace(/\*\*|__|`/g, '').trim())
-    .find(Boolean) || '';
+    .filter(Boolean);
+  const line = (skipLabels && lines.find((item) => !/^[^.!?]{0,60}:$/.test(item))) || lines[0] || '';
   const clean = redact(line).replace(/\s+/g, ' ').trim();
   const sentence = clean.match(/^.{10,}?[.!?](?=\s|$)/);
   if (sentence && sentence[0].length <= limit) return sentence[0];
@@ -76,7 +80,7 @@ async function recordRecap({ harness, cwd, session, state, reply, exec, now = ne
     session: String(session || 'default').slice(0, 16),
     stats: `dirty=${git.dirty} tools=${tracked.toolCalls} errors=${tracked.toolErrors.length}`,
     ask,
-    outcome: oneLine(reply, OUTCOME_LIMIT),
+    outcome: oneLine(state.answer || reply, OUTCOME_LIMIT, { skipLabels: true }),
   });
   try {
     const file = getRecapPath();
@@ -88,4 +92,9 @@ async function recordRecap({ harness, cwd, session, state, reply, exec, now = ne
   }
 }
 
-module.exports = { formatRecap, gitSummary, oneLine, recordRecap };
+// Hosts call this when they queue a completion pass for the turn.
+function rememberAnswer(state, reply) {
+  if (state && !state.answer && reply) state.answer = String(reply).slice(0, 4000);
+}
+
+module.exports = { formatRecap, gitSummary, oneLine, recordRecap, rememberAnswer };

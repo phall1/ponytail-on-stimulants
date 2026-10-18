@@ -17,7 +17,7 @@ const {
   runCompletionDecision,
 } = require('../completion-gate');
 const { loadTurnState, resetTurnState, saveTurnState, turnStatePath } = require('../completion-gate/persist');
-const { recordRecap } = require('../completion-gate/recap');
+const { recordRecap, rememberAnswer } = require('../completion-gate/recap');
 const { getDefaultMode } = require('./ponytail-on-stimulants-config');
 const { harnessName, isCodex, readMode, stateDir, writeStopContinuation } = require('./ponytail-on-stimulants-runtime');
 
@@ -89,19 +89,14 @@ async function handleStop(data) {
   const decision = mode && mode !== 'off' && mode !== 'focused'
     ? await runCompletionDecision({ mode, state, exec, cwd: cwd(data) })
     : null;
+  const reply = data.last_assistant_message || data.lastAssistantMessage || transcriptReply(data.transcript_path);
   if (decision) {
+    rememberAnswer(state, reply);
     saveTurnState(file, state);
     writeStopContinuation(eventName(data) || 'Stop', decision.prompt);
     return;
   }
-  await recordRecap({
-    harness: harnessName,
-    cwd: cwd(data),
-    session: sessionId(data),
-    state,
-    reply: data.last_assistant_message || data.lastAssistantMessage || transcriptReply(data.transcript_path),
-    exec,
-  });
+  await recordRecap({ harness: harnessName, cwd: cwd(data), session: sessionId(data), state, reply, exec });
   saveTurnState(file, state);
 }
 

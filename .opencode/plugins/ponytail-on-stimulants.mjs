@@ -92,7 +92,8 @@ export default {
 
   async setup(ctx) {
     const directory = ctx.location.directory;
-    const host = createCompletionHost({ directory });
+    const isChild = async (sessionID) => Boolean((await ctx.session.get?.({ sessionID }))?.parentID);
+    const host = createCompletionHost({ directory, isChild });
     const log = () => {}; // Never write plugin status to OpenCode's protocol stdout.
     const commands = readCommands();
     const skills = readSkills();
@@ -132,7 +133,8 @@ export default {
   },
 
   async server({ client, directory } = {}) {
-    const host = createCompletionHost({ directory });
+    const isChild = async (id) => Boolean((await client?.session?.get?.({ path: { id } }))?.data?.parentID);
+    const host = createCompletionHost({ directory, isChild });
     const assistantMessages = new Set();
     const log = (level, message) => {
       try { client?.app?.log({ body: { service: COMMAND, level, message } }); } catch (_) {}

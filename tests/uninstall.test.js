@@ -19,6 +19,7 @@ function runUninstall(env) {
       PLUGIN_DATA: path.join(temp, 'codex-data'),
       COPILOT_PLUGIN_DATA: path.join(temp, 'copilot-data'),
       QODER_CONFIG_DIR: path.join(temp, 'qoder-data'),
+      CODEX_HOME: path.join(temp, 'codex-home'),
       ...env,
     },
     encoding: 'utf8',
@@ -79,8 +80,19 @@ const env = {
   XDG_CONFIG_HOME: path.join(temp, 'config-home'),
 };
 
+const codexHooksPath = path.join(temp, 'codex-home', 'hooks.json');
+const codexTurnPath = path.join(temp, 'codex-home', 'ponytail-on-stimulants', '.ponytail-on-stimulants-turn-c.json');
+fs.mkdirSync(path.dirname(codexTurnPath), { recursive: true });
+fs.writeFileSync(codexTurnPath, '{}');
+const otherCodexHook = { hooks: [{ type: 'command', command: 'echo keep' }] };
+fs.writeFileSync(codexHooksPath, JSON.stringify({ hooks: {
+  Stop: [otherCodexHook, { hooks: [{ type: 'command', command: "PLUGIN_DATA='/x' node '/p/hooks/ponytail-on-stimulants-gate.js'" }] }],
+} }));
+
 let result = runUninstall(env);
 assert.equal(result.status, 0, result.stderr);
+assert.deepEqual(JSON.parse(fs.readFileSync(codexHooksPath, 'utf8')), { hooks: { Stop: [otherCodexHook] } }, 'only fork Codex hooks are removed');
+assert.equal(fs.existsSync(codexTurnPath), false, 'Codex user-hook turn state must be removed');
 assert.equal(fs.existsSync(flagPath), false, 'mode flag must be removed');
 assert.equal(fs.existsSync(nudgePath), false, 'statusline nudge flag must be removed');
 assert.equal(fs.existsSync(turnPath), false, 'turn state must be removed');

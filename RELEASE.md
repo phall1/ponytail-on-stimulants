@@ -24,6 +24,19 @@ Releases are deliberate; the fork never publishes under an upstream identity.
 
 Do not release from a dirty tree, a failed check, an unresolved upstream conflict, or a manual workflow that bypasses the tag/version contract.
 
+## v0.5.1 recap quality and Codex user hooks
+
+- Recap outcomes use the turn's answer from before a completion pass rather
+  than the pass's verification note, and skip bare label lines such as
+  `Completion check:`. OpenCode subagent sessions (with a parent) and
+  `pi-subagents` children are not recapped; their parent turn is.
+- `scripts/codex-hooks.js install|uninstall` writes the fork's Codex hooks as
+  user-level hooks in `$CODEX_HOME/hooks.json` for Codex builds that skip
+  plugin-bundled hooks (`plugin_hooks` off, as in Codex 0.162.1). Only fork
+  matcher groups are owned; `scripts/uninstall.js` removes them and their state.
+- Pi installs document `npm:ponytail-on-stimulants`, which
+  `pi update --extensions` keeps current.
+
 ## v0.5.0 recap index
 
 - Every operational gate (Pi/OMP `agent_end`, Claude/Codex `Stop`, OpenCode V2

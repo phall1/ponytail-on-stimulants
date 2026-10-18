@@ -13,8 +13,10 @@ This is the completion-discipline plugin: smallest sound design, then finish the
 ### Pi
 
 ```sh
-pi install git:github.com/phall1/ponytail-on-stimulants
+pi install npm:ponytail-on-stimulants
 ```
+
+`pi update --extensions` then keeps it on the latest release; pin with `npm:ponytail-on-stimulants@<version>` to opt out. `git:github.com/phall1/ponytail-on-stimulants` tracks `main` instead.
 
 ### Oh My Pi (OMP)
 
@@ -33,6 +35,14 @@ codex plugin add ponytail-on-stimulants@ponytail-on-stimulants
 ```
 
 Then open `/hooks`, **review and trust** SessionStart, SubagentStart, UserPromptSubmit, PreToolUse, PostToolUse, and Stop, and start a new thread. Untrusted hooks never run. Codex uses `hooks/codex-hooks.json`; Claude retains its separate failure-event configuration.
+
+If `/hooks` lists no Ponytail on Stimulants hooks, your Codex build skips plugin-bundled hooks (`codex features list` shows `plugin_hooks false`; Codex 0.162.1 does). Install the same hooks at user level from the plugin checkout, then trust them in `/hooks`:
+
+```sh
+node scripts/codex-hooks.js install     # writes $CODEX_HOME/hooks.json; uninstall reverses it
+```
+
+Remove them again (`uninstall`) if your Codex starts running plugin hooks, or every hook runs twice.
 
 Invoke skills as `$ponytail-on-stimulants:ponytail-on-stimulants` or `$ponytail-on-stimulants:ponytail-on-stimulants-review`. Append a mode to the primary skill to switch it.
 

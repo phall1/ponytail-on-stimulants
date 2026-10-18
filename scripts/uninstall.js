@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Ponytail on Stimulants — removes state the fork wrote outside its own files:
 // mode flags, config, the statusLine entry it added to
-// settings.json, and its entries in ~/.cursor/hooks.json. Plugin files
+// settings.json, and its entries in ~/.cursor/hooks.json and
+// $CODEX_HOME/hooks.json. Plugin files
 // themselves are removed by each host's own uninstall command (see README);
 // this only cleans up what those commands can't see.
 
@@ -9,6 +10,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { getConfigPath, getClaudeDir } = require('../hooks/ponytail-on-stimulants-config');
+const codexHooks = require('./codex-hooks');
 const cursorHooks = require('./cursor-hooks');
 
 const STATUSLINE_SCRIPT = /(?:^|[\\/])ponytail-on-stimulants-statusline\.(?:sh|ps1)(?=["'\s]|$)/;
@@ -69,6 +71,18 @@ try {
   } else {
     throw e;
   }
+}
+
+// User-level Codex hooks installed by scripts/codex-hooks.js and their state.
+const codexData = path.join(path.dirname(codexHooks.hooksPath()), 'ponytail-on-stimulants');
+removeTurnFiles(codexData, 'Ponytail on Stimulants Codex turn state');
+removeIfExists(path.join(codexData, '.ponytail-on-stimulants-active'), 'Ponytail on Stimulants Codex mode flag');
+try {
+  const hooksFile = codexHooks.uninstall();
+  if (hooksFile) console.log(`Removed Ponytail on Stimulants hooks from ${hooksFile}`);
+} catch (e) {
+  if (!(e instanceof SyntaxError)) throw e;
+  console.warn(`${codexHooks.hooksPath()} is malformed — remove the Ponytail on Stimulants hook entries manually (${e.message})`);
 }
 
 const settingsPath = path.join(getClaudeDir(), 'settings.json');
