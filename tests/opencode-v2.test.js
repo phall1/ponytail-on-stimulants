@@ -19,7 +19,7 @@ test.before(async () => {
 test.after(() => fs.rmSync(temp, { recursive: true, force: true }));
 
 async function harness({ rejectPrompt } = {}) {
-  const commands = new Map(), skills = new Map(), sessionHooks = new Map(), toolHooks = new Map(), prompts = [];
+  const commands = new Map(), skills = new Map(), sessionHooks = new Map(), toolHooks = new Map(), prompts = [], parents = new Map();
   let wake;
   const queue = [];
   let aborted = false;
@@ -30,6 +30,7 @@ async function harness({ rejectPrompt } = {}) {
     tool: { async hook(name, fn) { toolHooks.set(name, fn); } },
     session: {
       async hook(name, fn) { sessionHooks.set(name, fn); },
+      async get({ sessionID }) { return { id: sessionID, parentID: parents.get(sessionID) }; },
       async prompt(prompt) {
         if (rejectPrompt?.(prompt)) throw new Error('session no longer accepts prompts');
         prompts.push(prompt);
@@ -54,7 +55,7 @@ async function harness({ rejectPrompt } = {}) {
     queue.push({ event: { type, data: { sessionID }, ...extra }, done });
     wake?.();
   });
-  return { commands, skills, sessionHooks, toolHooks, prompts, cleanup, emit };
+  return { commands, skills, sessionHooks, toolHooks, prompts, parents, cleanup, emit };
 }
 
 test('package-directory and discovery entry points expose the same plugin', async () => {
@@ -165,7 +166,7 @@ test('new prompts invalidate in-flight evidence and concurrent decisions cannot 
   assert.equal(await host.decide('feral', 'unknown'), null);
 });
 
-test('V2 recaps the settled turn with the last assistant text, not the queued pass', async () => {
+test('V2 recaps the settled turn with its pre-pass answer, not the queued pass', async () => {
   const recaps = path.join(temp, 'v2-recaps.tsv');
   const previous = process.env.PONYTAIL_ON_STIMULANTS_RECAP_FILE;
   process.env.PONYTAIL_ON_STIMULANTS_RECAP_FILE = recaps;
@@ -175,10 +176,10 @@ test('V2 recaps the settled turn with the last assistant text, not the queued pa
     await h.commands.get('ponytail-on-stimulants').execute({ sessionID: 'mode', prompt: { text: 'full-send' }, delivery: 'queue' });
     await h.sessionHooks.get('prompt')({ sessionID: 'r', prompt: { text: 'Fix the parser' } });
     await h.toolHooks.get('execute.before')({ sessionID: 'r', tool: 'edit', input: {}, id: 'e1' });
-    await h.emit('session.text.ended', 'r', { data: { sessionID: 'r', text: 'First draft.' } });
+    await h.emit('session.text.ended', 'r', { data: { sessionID: 'r', text: 'Fixed the parser and verified it.' } });
     await h.emit('session.execution.succeeded', 'r');
     assert.deepEqual(lines(), [], 'queued completion pass means the turn is not settled');
-    await h.emit('session.text.ended', 'r', { data: { sessionID: 'r', text: 'Fixed the parser and verified it.' } });
+    await h.emit('session.text.ended', 'r', { data: { sessionID: 'r', text: 'Completion check:\nNothing left.' } });
     await h.emit('session.execution.succeeded', 'r');
     await h.emit('session.execution.succeeded', 'r');
     assert.equal(lines().length, 1);
@@ -187,6 +188,10 @@ test('V2 recaps the settled turn with the last assistant text, not the queued pa
     await h.emit('session.execution.interrupted', 'r');
     await h.emit('session.execution.succeeded', 'r');
     assert.equal(lines().length, 1, 'interrupted turns are not recapped');
+    h.parents.set('child', 'r');
+    await h.sessionHooks.get('prompt')({ sessionID: 'child', prompt: { text: 'Subagent task' } });
+    await h.emit('session.execution.succeeded', 'child');
+    assert.equal(lines().length, 1, 'subagent sessions are summarized by their parent');
   } finally {
     await h.cleanup();
     process.env.PONYTAIL_ON_STIMULANTS_RECAP_FILE = previous;

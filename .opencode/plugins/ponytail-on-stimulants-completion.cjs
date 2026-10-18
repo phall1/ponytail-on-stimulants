@@ -8,7 +8,7 @@ const {
   recordToolResult,
   runCompletionDecision,
 } = require('../../completion-gate');
-const { recordRecap } = require('../../completion-gate/recap');
+const { recordRecap, rememberAnswer } = require('../../completion-gate/recap');
 
 function eventSessionId(event) {
   const props = event?.data || event?.properties || {};
@@ -51,7 +51,7 @@ async function promptSession(client, sessionID, text) {
   return false;
 }
 
-function createCompletionHost({ directory, exec, harness = 'opencode' } = {}) {
+function createCompletionHost({ directory, exec, harness = 'opencode', isChild = async () => false } = {}) {
   const sessions = new Map();
   const replies = new Map();
   const pending = new Set();
@@ -113,7 +113,10 @@ function createCompletionHost({ directory, exec, harness = 'opencode' } = {}) {
     if (pending.has(id)) return null;
     const state = sessions.get(id);
     const decision = await decide(mode, id);
+    if (decision) rememberAnswer(state, replies.get(id));
     if (decision || !state || sessions.get(id) !== state) return decision;
+    // Subagent sessions are summarized by their parent's recap.
+    if (await isChild(id).catch(() => false)) return null;
     await recordRecap({ harness, cwd: directory, session: id, state, reply: replies.get(id), exec: spawnExec });
     return null;
   }

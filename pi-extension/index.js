@@ -28,7 +28,7 @@ const {
   summarizeTrackedEvidence,
 } = require('../completion-gate/index.js');
 const { createJevJudge } = require('../completion-gate/jev.js');
-const { recordRecap } = require('../completion-gate/recap.js');
+const { recordRecap, rememberAnswer } = require('../completion-gate/recap.js');
 
 export { filterSkillBodyForMode };
 export const readDefaultMode = getDefaultMode;
@@ -271,6 +271,8 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
   });
 
   function recapSettledTurn(ctx) {
+    // pi-subagents children are summarized by the parent turn's recap.
+    if (process.env.PI_SUBAGENT_CHILD === '1') return null;
     const session = ctx?.sessionManager?.getSessionId?.() || 'default';
     return recordRecap({
       harness: options.harness || 'pi',
@@ -370,6 +372,7 @@ export default function ponytailOnStimulantsExtension(pi, options = {}) {
       jev,
     });
     if (!claimContinuation(state, prompt, maximum)) return false;
+    rememberAnswer(state, message);
     pi.appendEntry('ponytail-on-stimulants-completion-pass', {
       mode,
       pass: state.continuations,

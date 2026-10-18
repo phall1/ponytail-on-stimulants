@@ -7,7 +7,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { createSpawnExec, createTurnState, recordToolCall, recordToolResult, restoreTurnState, serializeTurnState } = require('../completion-gate');
-const { formatRecap, oneLine, recordRecap } = require('../completion-gate/recap');
+const { formatRecap, oneLine, recordRecap, rememberAnswer } = require('../completion-gate/recap');
 
 function withRecapFile(fn) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-on-stimulants-recap-'));
@@ -35,7 +35,20 @@ test('oneLine keeps the first plain sentence, strips markdown, redacts and trunc
   assert.equal(long.length, 80);
   assert.ok(long.endsWith('…'));
   assert.equal(oneLine('', 80), '');
+  assert.equal(oneLine('Completion check:\n- All six tests pass.', 160, { skipLabels: true }), 'All six tests pass.');
+  assert.equal(oneLine('Completion check:', 160, { skipLabels: true }), 'Completion check:');
+  assert.equal(oneLine('Fix these:\n- a', 160), 'Fix these:', 'asks keep their first line');
 });
+
+test('a remembered pre-pass answer wins over the final reply and is persisted', () => withRecapFile(async ({ dir }) => {
+  const state = createTurnState('Fix it');
+  rememberAnswer(state, 'Fixed the bug.');
+  rememberAnswer(state, 'Later note.');
+  const restored = restoreTurnState(serializeTurnState(state));
+  assert.equal(restored.answer, 'Fixed the bug.');
+  const line = await recordRecap({ harness: 'pi', cwd: dir, state: restored, reply: 'Completion pass verified.' });
+  assert.match(line, /\tFix it → Fixed the bug\.$/);
+}));
 
 test('formatRecap emits exactly seven tab-separated fields', () => {
   const line = formatRecap({ time: 't', harness: 'h', project: 'p\tq', branch: 'b', session: 's', stats: 'x', ask: 'fix\nit', outcome: 'done' });

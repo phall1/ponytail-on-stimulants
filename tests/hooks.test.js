@@ -332,12 +332,12 @@ test('Claude Stop recaps only the settled turn, with transcript fallback', () =>
   try {
     hook({ hook_event_name: 'UserPromptSubmit', prompt: 'Fix the parser bug in this repo' });
     hook({ hook_event_name: 'PreToolUse', tool_name: 'Edit', tool_input: { file_path: 'a.js' }, tool_use_id: 't1' });
-    const first = hook({ hook_event_name: 'Stop', last_assistant_message: 'Done.' });
+    const first = hook({ hook_event_name: 'Stop', last_assistant_message: 'Fixed the parser. Added a regression test.' });
     assert.match(first.stdout, /COMPLETION PASS 1\/1/);
     assert.deepEqual(lines(), [], 'a turn with a pending completion pass is not settled');
-    const second = hook({ hook_event_name: 'Stop', stop_hook_active: true, last_assistant_message: '**Fixed the parser.** All tests pass.' });
+    const second = hook({ hook_event_name: 'Stop', stop_hook_active: true, last_assistant_message: 'Completion check:\nEverything verified.' });
     assert.equal(second.stdout, '');
-    assert.match(lines()[0], /\tclaude\t~\t-\tr1\tdirty=0 tools=1 errors=0\tFix the parser bug in this repo → Fixed the parser\.$/);
+    assert.match(lines()[0], /\tclaude\t~\t-\tr1\tdirty=0 tools=1 errors=0\tFix the parser bug in this repo → Fixed the parser\.$/, 'the pre-pass answer, not the pass note');
     hook({ hook_event_name: 'Stop', last_assistant_message: 'Repeat stop.' });
     assert.equal(lines().length, 1, 'one recap per turn');
 

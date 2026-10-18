@@ -316,11 +316,17 @@ test('settled turns append one recap; queued passes and aborted turns do not', a
     await h.handlers.get('message_end')({ message: { role: 'assistant', content: [{ type: 'text', text: 'Fixed the parser bug.' }] } }, h.ctx);
     await h.handlers.get('agent_end')({}, h.ctx);
     assert.equal(lines().length, 1);
-    assert.match(lines()[0], /\tpi\t\/repo\t-\tpi-session\tdirty=1 tools=1 errors=0\tFix the parser bug in this repository → Fixed the parser bug\.$/);
+    assert.match(lines()[0], /\tpi\t\/repo\t-\tpi-session\tdirty=1 tools=1 errors=0\tFix the parser bug in this repository → Implemented\.$/, 'the pre-pass answer wins');
 
     await h.handlers.get('input')({ source: 'interactive', text: 'Explain the parser' }, h.ctx);
     await h.handlers.get('agent_end')({ messages: [{ role: 'assistant', stopReason: 'aborted' }] }, h.ctx);
     assert.equal(lines().length, 1);
+
+    process.env.PI_SUBAGENT_CHILD = '1';
+    await h.handlers.get('input')({ source: 'interactive', text: 'Subagent task' }, h.ctx);
+    await h.handlers.get('agent_end')({}, h.ctx);
+    delete process.env.PI_SUBAGENT_CHILD;
+    assert.equal(lines().length, 1, 'pi-subagents children are not recapped');
   } finally {
     if (previous === undefined) delete process.env.PONYTAIL_ON_STIMULANTS_RECAP_FILE;
     else process.env.PONYTAIL_ON_STIMULANTS_RECAP_FILE = previous;
