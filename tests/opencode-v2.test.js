@@ -164,3 +164,31 @@ test('new prompts invalidate in-flight evidence and concurrent decisions cannot 
   assert.equal(await decision, null);
   assert.equal(await host.decide('feral', 'unknown'), null);
 });
+
+test('V2 recaps the settled turn with the last assistant text, not the queued pass', async () => {
+  const recaps = path.join(temp, 'v2-recaps.tsv');
+  const previous = process.env.PONYTAIL_ON_STIMULANTS_RECAP_FILE;
+  process.env.PONYTAIL_ON_STIMULANTS_RECAP_FILE = recaps;
+  const h = await harness();
+  const lines = () => (fs.existsSync(recaps) ? fs.readFileSync(recaps, 'utf8').split('\n').filter(Boolean) : []);
+  try {
+    await h.commands.get('ponytail-on-stimulants').execute({ sessionID: 'mode', prompt: { text: 'full-send' }, delivery: 'queue' });
+    await h.sessionHooks.get('prompt')({ sessionID: 'r', prompt: { text: 'Fix the parser' } });
+    await h.toolHooks.get('execute.before')({ sessionID: 'r', tool: 'edit', input: {}, id: 'e1' });
+    await h.emit('session.text.ended', 'r', { data: { sessionID: 'r', text: 'First draft.' } });
+    await h.emit('session.execution.succeeded', 'r');
+    assert.deepEqual(lines(), [], 'queued completion pass means the turn is not settled');
+    await h.emit('session.text.ended', 'r', { data: { sessionID: 'r', text: 'Fixed the parser and verified it.' } });
+    await h.emit('session.execution.succeeded', 'r');
+    await h.emit('session.execution.succeeded', 'r');
+    assert.equal(lines().length, 1);
+    assert.match(lines()[0], /\topencode\t.*\tr\tdirty=0 tools=1 errors=0\tFix the parser → Fixed the parser and verified it\.$/);
+    await h.sessionHooks.get('prompt')({ sessionID: 'r', prompt: { text: 'Explain the change' } });
+    await h.emit('session.execution.interrupted', 'r');
+    await h.emit('session.execution.succeeded', 'r');
+    assert.equal(lines().length, 1, 'interrupted turns are not recapped');
+  } finally {
+    await h.cleanup();
+    process.env.PONYTAIL_ON_STIMULANTS_RECAP_FILE = previous;
+  }
+});

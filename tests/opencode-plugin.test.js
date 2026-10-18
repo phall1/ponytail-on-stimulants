@@ -171,3 +171,27 @@ test('parseCommandFile returns null when there is no frontmatter', () => {
 });
 
 test.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+
+test('V1 session.idle recaps the settled turn from assistant text parts only', async () => {
+  const recaps = path.join(tmp, 'v1-recaps.tsv');
+  const previous = process.env.PONYTAIL_ON_STIMULANTS_RECAP_FILE;
+  process.env.PONYTAIL_ON_STIMULANTS_RECAP_FILE = recaps;
+  try {
+    fs.writeFileSync(statePath, 'focused');
+    const hooks = await loadPlugin({});
+    const event = (value) => hooks.event({ event: value });
+    await hooks['chat.message']({ sessionID: 'v1' }, { parts: [{ type: 'text', text: 'Summarize the repo' }] });
+    await event({ type: 'message.updated', properties: { info: { id: 'u1', sessionID: 'v1', role: 'user' } } });
+    await event({ type: 'message.part.updated', properties: { part: { sessionID: 'v1', messageID: 'u1', type: 'text', text: 'user text' } } });
+    await event({ type: 'message.updated', properties: { info: { id: 'a1', sessionID: 'v1', role: 'assistant' } } });
+    await event({ type: 'message.part.updated', properties: { part: { sessionID: 'v1', messageID: 'a1', type: 'text', text: 'It is a plugin.' } } });
+    await event({ type: 'session.idle', properties: { sessionID: 'v1' } });
+    await event({ type: 'session.idle', properties: { sessionID: 'v1' } });
+    const lines = fs.readFileSync(recaps, 'utf8').split('\n').filter(Boolean);
+    assert.equal(lines.length, 1);
+    assert.match(lines[0], /\topencode\t.*\tv1\t.*\tSummarize the repo → It is a plugin\.$/);
+  } finally {
+    process.env.PONYTAIL_ON_STIMULANTS_RECAP_FILE = previous;
+    try { fs.unlinkSync(statePath); } catch (_) {}
+  }
+});

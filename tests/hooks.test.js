@@ -319,3 +319,57 @@ test('focused mode does not emit a Stop continuation', () => {
     assert.equal(result.stdout, '');
   } finally { fs.rmSync(home, { recursive: true, force: true }); }
 });
+
+test('Claude Stop recaps only the settled turn, with transcript fallback', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-on-stimulants-recap-gate-'));
+  const claude = path.join(home, '.claude');
+  const recaps = path.join(home, 'recaps.tsv');
+  fs.mkdirSync(claude, { recursive: true });
+  fs.writeFileSync(path.join(claude, '.ponytail-on-stimulants-active'), 'full-send');
+  const env = { HOME: home, CLAUDE_CONFIG_DIR: claude, PONYTAIL_ON_STIMULANTS_RECAP_FILE: recaps };
+  const hook = (data) => run('ponytail-on-stimulants-gate.js', { env, input: JSON.stringify({ session_id: 'r1', cwd: home, ...data }) });
+  const lines = () => (fs.existsSync(recaps) ? fs.readFileSync(recaps, 'utf8').split('\n').filter(Boolean) : []);
+  try {
+    hook({ hook_event_name: 'UserPromptSubmit', prompt: 'Fix the parser bug in this repo' });
+    hook({ hook_event_name: 'PreToolUse', tool_name: 'Edit', tool_input: { file_path: 'a.js' }, tool_use_id: 't1' });
+    const first = hook({ hook_event_name: 'Stop', last_assistant_message: 'Done.' });
+    assert.match(first.stdout, /COMPLETION PASS 1\/1/);
+    assert.deepEqual(lines(), [], 'a turn with a pending completion pass is not settled');
+    const second = hook({ hook_event_name: 'Stop', stop_hook_active: true, last_assistant_message: '**Fixed the parser.** All tests pass.' });
+    assert.equal(second.stdout, '');
+    assert.match(lines()[0], /\tclaude\t~\t-\tr1\tdirty=0 tools=1 errors=0\tFix the parser bug in this repo → Fixed the parser\.$/);
+    hook({ hook_event_name: 'Stop', last_assistant_message: 'Repeat stop.' });
+    assert.equal(lines().length, 1, 'one recap per turn');
+
+    const transcript = path.join(home, 'transcript.jsonl');
+    fs.writeFileSync(transcript, [
+      JSON.stringify({ type: 'assistant', message: { content: [{ type: 'text', text: 'Older reply.' }] } }),
+      JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use' }, { type: 'text', text: 'Explained the cache layout.' }] } }),
+      JSON.stringify({ type: 'system' }),
+      '{truncated',
+    ].join('\n'));
+    hook({ hook_event_name: 'UserPromptSubmit', prompt: 'How does the cache work?' });
+    hook({ hook_event_name: 'Stop', transcript_path: transcript });
+    assert.match(lines()[1], /\tHow does the cache work\? → Explained the cache layout\.$/);
+  } finally { fs.rmSync(home, { recursive: true, force: true }); }
+});
+
+test('focused and off modes still recap; PONYTAIL_ON_STIMULANTS_RECAP=0 disables it', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ponytail-on-stimulants-recap-modes-'));
+  const claude = path.join(home, '.claude');
+  const recaps = path.join(home, 'recaps.tsv');
+  fs.mkdirSync(claude, { recursive: true });
+  try {
+    for (const [mode, extra] of [['focused', {}], ['off', {}], ['full-send', { PONYTAIL_ON_STIMULANTS_RECAP: '0' }]]) {
+      fs.writeFileSync(path.join(claude, '.ponytail-on-stimulants-active'), mode);
+      const env = { HOME: home, CLAUDE_CONFIG_DIR: claude, PONYTAIL_ON_STIMULANTS_RECAP_FILE: recaps, ...extra };
+      const hook = (data) => run('ponytail-on-stimulants-gate.js', { env, input: JSON.stringify({ session_id: mode, cwd: home, ...data }) });
+      hook({ hook_event_name: 'UserPromptSubmit', prompt: `Explain ${mode}` });
+      assert.equal(hook({ hook_event_name: 'Stop', last_assistant_message: 'Explained.' }).stdout, '');
+    }
+    const lines = fs.readFileSync(recaps, 'utf8').split('\n').filter(Boolean);
+    assert.equal(lines.length, 2);
+    assert.match(lines[0], /\tExplain focused → Explained\.$/);
+    assert.match(lines[1], /\tExplain off → Explained\.$/);
+  } finally { fs.rmSync(home, { recursive: true, force: true }); }
+});

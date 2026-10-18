@@ -77,6 +77,21 @@ function getHideStatus() {
   return truthyEnv('PONYTAIL_ON_STIMULANTS_HIDE_STATUS') ?? readConfig().hideStatus === true;
 }
 
+function getRecapEnabled() {
+  return truthyEnv('PONYTAIL_ON_STIMULANTS_RECAP') ?? readConfig().recap !== false;
+}
+
+function getRecapPath() {
+  if (process.env.PONYTAIL_ON_STIMULANTS_RECAP_FILE) return process.env.PONYTAIL_ON_STIMULANTS_RECAP_FILE;
+  const configured = readConfig().recapFile;
+  if (typeof configured === 'string' && configured) return configured;
+  const state = process.env.XDG_STATE_HOME ||
+    (process.platform === 'win32'
+      ? process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local')
+      : path.join(os.homedir(), '.local', 'state'));
+  return path.join(state, 'ponytail-on-stimulants', 'recaps.tsv');
+}
+
 function writeDefaultMode(mode) {
   const normalized = normalizeMode(mode);
   if (!normalized) return null;
@@ -98,6 +113,8 @@ module.exports = {
   getClaudeDir,
   getHideStatus,
   getQuietStartup,
+  getRecapEnabled,
+  getRecapPath,
   isShellSafe,
   normalizeMode,
   isDeactivationCommand,

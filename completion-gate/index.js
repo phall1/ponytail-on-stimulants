@@ -93,6 +93,7 @@ function createTurnState(prompt = '') {
     failureCounts: new Map(),
     unresolvedFailures: new Map(),
     lastPrompt: null,
+    recapped: false,
   };
 }
 
@@ -320,6 +321,7 @@ function serializeTurnState(state) {
     failureCounts: [...(snapshot.failureCounts || new Map()).entries()],
     unresolvedFailures: [...(snapshot.unresolvedFailures || new Map()).entries()],
     lastPrompt: snapshot.lastPrompt || null,
+    recapped: Boolean(snapshot.recapped),
   };
 }
 
@@ -340,6 +342,7 @@ function restoreTurnState(raw) {
   state.hadMutation = Boolean(raw.hadMutation);
   state.recentTools = Array.isArray(raw.recentTools) ? raw.recentTools.slice(-20) : [];
   state.lastPrompt = typeof raw.lastPrompt === 'string' ? raw.lastPrompt : null;
+  state.recapped = Boolean(raw.recapped);
   state.fingerprints = restoreMap(raw.fingerprints);
   state.failureCounts = restoreMap(raw.failureCounts);
   state.unresolvedFailures = restoreMap(raw.unresolvedFailures);

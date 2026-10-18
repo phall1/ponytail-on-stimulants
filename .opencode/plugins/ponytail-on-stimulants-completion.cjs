@@ -8,6 +8,7 @@ const {
   recordToolResult,
   runCompletionDecision,
 } = require('../../completion-gate');
+const { recordRecap } = require('../../completion-gate/recap');
 
 function eventSessionId(event) {
   const props = event?.data || event?.properties || {};
@@ -50,8 +51,9 @@ async function promptSession(client, sessionID, text) {
   return false;
 }
 
-function createCompletionHost({ directory, exec } = {}) {
+function createCompletionHost({ directory, exec, harness = 'opencode' } = {}) {
   const sessions = new Map();
+  const replies = new Map();
   const pending = new Set();
   const spawnExec = exec || createSpawnExec();
   let lastSessionId = 'default';
@@ -69,7 +71,12 @@ function createCompletionHost({ directory, exec } = {}) {
     lastSessionId = key;
     const state = createTurnState(prompt || '');
     sessions.set(key, state);
+    replies.delete(key);
     return { key, state };
+  }
+
+  function recordReply(id, text) {
+    if (id && text) replies.set(id, text);
   }
 
   function recordTool(id, toolName, args, callId) {
@@ -101,9 +108,22 @@ function createCompletionHost({ directory, exec } = {}) {
     }
   }
 
-  function remove(id) { sessions.delete(id); }
+  // Decide a completion pass; when the turn is settled instead, recap it.
+  async function settle(mode, id) {
+    if (pending.has(id)) return null;
+    const state = sessions.get(id);
+    const decision = await decide(mode, id);
+    if (decision || !state || sessions.get(id) !== state) return decision;
+    await recordRecap({ harness, cwd: directory, session: id, state, reply: replies.get(id), exec: spawnExec });
+    return null;
+  }
 
-  return { decide, recordResult, recordTool, remove, reset, session };
+  function remove(id) {
+    sessions.delete(id);
+    replies.delete(id);
+  }
+
+  return { decide, recordReply, recordResult, recordTool, remove, reset, session, settle };
 }
 
 module.exports = {

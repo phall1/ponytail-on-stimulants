@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import extension from '../index.js';
@@ -295,4 +296,34 @@ test('root package points Pi at the renamed skill collection', () => {
   const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
   assert.deepEqual(pkg.pi.skills, ['./skills']);
   assert.match(readFileSync(join(root, 'skills', 'ponytail-on-stimulants', 'SKILL.md'), 'utf8'), /name: ponytail-on-stimulants/);
+});
+
+test('settled turns append one recap; queued passes and aborted turns do not', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ponytail-on-stimulants-pi-recap-'));
+  const recaps = join(dir, 'recaps.tsv');
+  const previous = process.env.PONYTAIL_ON_STIMULANTS_RECAP_FILE;
+  process.env.PONYTAIL_ON_STIMULANTS_RECAP_FILE = recaps;
+  const lines = () => (existsSync(recaps) ? readFileSync(recaps, 'utf8').split('\n').filter(Boolean) : []);
+  try {
+    const h = harness();
+    h.ctx.sessionManager.getSessionId = () => 'pi-session';
+    await start(h);
+    await beginExecution(h);
+    await h.handlers.get('agent_end')({}, h.ctx);
+    assert.equal(h.sent.length, 1);
+    assert.deepEqual(lines(), [], 'a queued pass keeps the turn open');
+    await h.handlers.get('input')({ source: 'extension', text: h.sent[0] }, h.ctx);
+    await h.handlers.get('message_end')({ message: { role: 'assistant', content: [{ type: 'text', text: 'Fixed the parser bug.' }] } }, h.ctx);
+    await h.handlers.get('agent_end')({}, h.ctx);
+    assert.equal(lines().length, 1);
+    assert.match(lines()[0], /\tpi\t\/repo\t-\tpi-session\tdirty=1 tools=1 errors=0\tFix the parser bug in this repository → Fixed the parser bug\.$/);
+
+    await h.handlers.get('input')({ source: 'interactive', text: 'Explain the parser' }, h.ctx);
+    await h.handlers.get('agent_end')({ messages: [{ role: 'assistant', stopReason: 'aborted' }] }, h.ctx);
+    assert.equal(lines().length, 1);
+  } finally {
+    if (previous === undefined) delete process.env.PONYTAIL_ON_STIMULANTS_RECAP_FILE;
+    else process.env.PONYTAIL_ON_STIMULANTS_RECAP_FILE = previous;
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
