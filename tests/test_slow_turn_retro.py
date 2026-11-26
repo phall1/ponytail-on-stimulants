@@ -164,7 +164,9 @@ class StopTest(unittest.TestCase):
                 "last_assistant_message": answer}
         turn = Turn(key="t", start=100, interactive=True)
         add_tool(turn, "Bash", 200, 240, "make test")
-        with tempfile.TemporaryDirectory() as temp, patch.object(retro, "read_turn", return_value=turn):
+        with (tempfile.TemporaryDirectory() as temp,
+              patch.object(retro, "read_turn", return_value=turn),
+              patch.dict(os.environ, {"CI": ""})):
             directory = Path(temp)
             response = retro.run_stop("claude", data, directory, 900)
             self.assertIn("800s active", response["reason"])

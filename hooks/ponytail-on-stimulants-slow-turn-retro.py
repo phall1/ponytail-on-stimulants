@@ -3,6 +3,7 @@
 
 import argparse
 from collections import Counter
+from contextlib import closing
 import hashlib
 import json
 import os
@@ -228,7 +229,7 @@ def run_stop(agent, data, directory, now):
     metrics = measure(turn, now)
     raw_session = data.get("session_id") or ""
     session = f"{agent}:{raw_session}"
-    with sqlite3.connect(directory / "slow-turn-retro.sqlite", timeout=0) as db:
+    with closing(sqlite3.connect(directory / "slow-turn-retro.sqlite", timeout=0)) as db, db:
         db.row_factory = sqlite3.Row
         db.execute("""CREATE TABLE IF NOT EXISTS turns (
             session TEXT, turn TEXT, fired REAL, answer TEXT, rescued INTEGER DEFAULT 0,
@@ -262,6 +263,7 @@ def main():
         return
     if os.environ.get("PONYTAIL_ON_STIMULANTS_SLOW_TURN_RETRO") == "0":
         return
+    os.umask(0o077)
     directory = state_directory()
     try:
         if hasattr(signal, "setitimer"):
