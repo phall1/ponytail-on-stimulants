@@ -3,7 +3,7 @@
 // user-level hooks in $CODEX_HOME/hooks.json (default ~/.codex/hooks.json).
 // Use this when Codex does not run plugin-bundled hooks (feature
 // `plugin_hooks` off); never combine both or every hook runs twice. Only
-// matcher groups whose commands all run ponytail-on-stimulants-*.js are
+// matcher groups whose commands all run fork-owned scripts are
 // owned; every other hook stays as it was. Codex still requires `/hooks`
 // review before user hooks run.
 //
@@ -19,6 +19,8 @@ const { isPonytailHook } = require('./cursor-hooks');
 const ROOT = path.join(__dirname, '..');
 const TEMPLATE = path.join(ROOT, 'hooks', 'codex-hooks.json');
 const PLUGIN_COMMAND = /hooks\/(ponytail-on-stimulants-[\w-]+\.js)'\)\)"(.*)$/;
+const RETRO_COMMAND = /^python3 -IBS -c .*\/hooks\/ponytail-on-stimulants-slow-turn-retro\.py',.* --agent codex$/;
+const USER_RETRO_COMMAND = /^CLAUDE_PLUGIN_ROOT='[^']+' (python3 .* --agent codex)$/;
 
 function codexHome() {
   return process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
@@ -29,7 +31,13 @@ function hooksPath() {
 }
 
 function isPonytailGroup(group) {
-  return Boolean(group && Array.isArray(group.hooks) && group.hooks.length && group.hooks.every(isPonytailHook));
+  return Boolean(group && Array.isArray(group.hooks) && group.hooks.length && group.hooks.every(isForkHook));
+}
+
+function isForkHook(hook) {
+  if (isPonytailHook(hook)) return true;
+  const command = hook?.command?.match?.(USER_RETRO_COMMAND)?.[1];
+  return Boolean(command && RETRO_COMMAND.test(command));
 }
 
 // Missing file → empty config. Malformed JSON throws a SyntaxError so the
@@ -63,6 +71,9 @@ function ponytailGroups() {
     hooks[event] = groups.map((group) => ({
       ...group,
       hooks: group.hooks.map((hook) => {
+        if (RETRO_COMMAND.test(hook.command)) {
+          return { ...hook, command: `CLAUDE_PLUGIN_ROOT='${root}' ${hook.command}` };
+        }
         const [, script, args] = hook.command.match(PLUGIN_COMMAND);
         return { ...hook, command: `PLUGIN_DATA='${data}' node '${root}/hooks/${script}'${args}` };
       }),

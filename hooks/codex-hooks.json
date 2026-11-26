@@ -86,6 +86,11 @@
             "command": "node -e \"require(require('path').join(process.env.CLAUDE_PLUGIN_ROOT.split(String.fromCharCode(92)).join('/'), 'hooks/ponytail-on-stimulants-gate.js'))\"",
             "timeout": 15,
             "statusMessage": "Checking Ponytail on Stimulants completion gate..."
+          },
+          {
+            "type": "command",
+            "command": "python3 -IBS -c \"import os,runpy,sys; p=os.environ['CLAUDE_PLUGIN_ROOT'].replace(chr(92),'/'); sys.path.insert(0,p+'/hooks'); runpy.run_path(p+'/hooks/ponytail-on-stimulants-slow-turn-retro.py',run_name='__main__')\" --agent codex",
+            "timeout": 1
           }
         ]
       }

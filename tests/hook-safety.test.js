@@ -38,6 +38,7 @@ function fixture(t) {
   Object.assign(env, {
     HOME: dir, USERPROFILE: dir, CLAUDE_CONFIG_DIR: claude,
     PONYTAIL_ON_STIMULANTS_DEFAULT_MODE: 'focused',
+    XDG_STATE_HOME: dir,
   });
   return { dir, claude, copilot, codex, env };
 }
@@ -84,9 +85,15 @@ function shellRun(command, env, cwd, input = '') {
 
 test('all fork launchers keep plugin roots out of shell text, including gate and Qoder', () => {
   const commands = launchers();
-  assert.equal(commands.filter(c => c.event === 'Stop').length, 1);
+  assert.equal(commands.filter(c => c.event === 'Stop').length, 2);
   for (const { command, envKey, field } of commands) {
     assert.doesNotMatch(command, /\$\{(?:CLAUDE_|QODER_)?PLUGIN_ROOT\}|PONYTAIL_ON_STIMULANTS_DIR/);
+    if (command.startsWith('python3')) {
+      assert.match(command, /^python3 -IBS -c /);
+      assert.ok(command.includes(`os.environ['${envKey}']`));
+      assert.ok(fs.existsSync(path.join(root, 'hooks/ponytail-on-stimulants-slow-turn-retro.py')));
+      continue;
+    }
     assert.ok(command.includes(`process.env.${envKey}.split(String.fromCharCode(92)).join('/')`));
     // Keep upstream's Node 12-compatible path loader, not replaceAll/node:path.
     assert.ok(command.includes("require('path')"));
@@ -105,8 +112,16 @@ test('launchers load real hooks with backslashed roots without a shell', t => {
   const f = fixture(t);
   for (const launcher of launchers()) {
     const { command, envKey, name, event } = launcher;
-    const code = command.match(/node -e "([^"]+)"/)[1];
     const env = { ...f.env, [envKey]: root.split(path.sep).join('\\') };
+    const python = command.match(/^(python3) (-IBS) (-c) "([^"]+)" --agent (\w+)$/);
+    if (python) {
+      const [, executable, flags, option, code, agent] = python;
+      checked(spawnSync(executable, [flags, option, code, '--agent', agent], {
+        env, input: '{}', encoding: 'utf8', timeout: 4000,
+      }), command);
+      continue;
+    }
+    const code = command.match(/node -e "([^"]+)"/)[1];
     if (name === 'copilot') env.COPILOT_PLUGIN_DATA = f.copilot;
     // Qoder launchers must detect their plugin root without a session marker.
     // Restore feral before each activation to prove --reset is still forwarded.
