@@ -22,7 +22,7 @@ const HOST_PLUGIN_MANIFESTS = [
 // PowerShell 5.1 rejects these POSIX shell guards when a host runs `command`.
 const POSIX_GUARD_SYNTAX = /\bcommand\s+-v\b|&&|\|\||>\/dev\/null|2>&1/;
 // Pull the hooks/<script> a command launches, so we can check it exists.
-const HOOK_SCRIPT = /hooks[\\/]([\w.-]+\.(?:js|mjs|cjs|ps1|sh))/;
+const HOOK_SCRIPT = /hooks[\\/]([\w.-]+\.(?:js|mjs|cjs|py|ps1|sh))/;
 
 // Read inside each case so a missing/malformed file fails as a clean assertion,
 // not a load-time crash.
@@ -70,7 +70,7 @@ test('shared hook commands are shell-agnostic (no bash-only exec prefix)', () =>
   assert.ok(commands.length > 0, 'expected at least one shared command entry');
   for (const cmd of commands) {
     assert.doesNotMatch(cmd, /(^|\s)exec\s/, `command must not use the bash-only 'exec' builtin (breaks under PowerShell): ${cmd}`);
-    assert.match(cmd, /^node\s+/, `command must invoke node directly so it runs in both bash and PowerShell: ${cmd}`);
+    assert.match(cmd, /^(?:node|python3)\s+/, `command must invoke its interpreter directly: ${cmd}`);
     assert.doesNotMatch(cmd, /;\s*exit 0$/, `command must not leave a shell wrapper waiting on node: ${cmd}`);
   }
 });

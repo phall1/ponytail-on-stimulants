@@ -1,6 +1,6 @@
 {
   "name": "ponytail-on-stimulants",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Minimal architecture. Maximal execution. Completion discipline for coding agents.",
   "keywords": ["agent-plugin", "opencode-plugin", "opencode", "coding-agent", "completion", "mcp", "pi-package", "pi", "omp", "oh-my-pi", "skills", "qoder"],
   "license": "MIT",
@@ -58,7 +58,7 @@
   ],
   "scripts": {
     "check": "node scripts/check-rule-copies.js && node scripts/check-versions.js",
-    "test": "node --import ./tests/isolate-recaps.cjs --test tests/*.test.js && npm test --prefix pi-extension",
+    "test": "node --import ./tests/isolate-recaps.cjs --test tests/*.test.js && npm test --prefix pi-extension && python3 -B -m unittest discover -s tests -p test_slow_turn_retro.py",
     "test:completion": "node --import ./tests/isolate-recaps.cjs --test tests/completion-gate.test.js && node --import ./tests/isolate-recaps.cjs benchmarks/completion/selftest.js && node --import ./tests/isolate-recaps.cjs benchmarks/completion/evaluate.js --selftest"
   },
   "pi": {

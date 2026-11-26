@@ -35,21 +35,22 @@ test('installs runnable user-level Codex hooks, idempotently, preserving other h
     for (const groups of Object.values(config.hooks)) {
       for (const hook of groups.flatMap((group) => group.hooks)) {
         if (hook.command === 'echo other') continue;
-        assert.doesNotMatch(hook.command, /CLAUDE_PLUGIN_ROOT/);
-        assert.match(hook.command, /^PLUGIN_DATA='.+\/\.codex\/ponytail-on-stimulants' node '.+\/hooks\/ponytail-on-stimulants-[\w-]+\.js'/);
+        assert.match(hook.command, /^(?:PLUGIN_DATA='.+\/\.codex\/ponytail-on-stimulants' node '.+\/hooks\/ponytail-on-stimulants-[\w-]+\.js'|CLAUDE_PLUGIN_ROOT='[^']+' python3 -IBS -c .+slow-turn-retro\.py.+ --agent codex$)/);
       }
     }
 
     const commands = (event) => config.hooks[event].flatMap((group) => group.hooks).map((item) => item.command).filter((item) => item !== 'echo other');
     const hook = (event, data) => commands(event).map((item) => spawnSync('/bin/sh', ['-c', item], {
       cwd: home,
-      env: { PATH: process.env.PATH, HOME: home, PONYTAIL_ON_STIMULANTS_RECAP_FILE: recaps },
+      env: { PATH: process.env.PATH, HOME: home, XDG_STATE_HOME: home, PONYTAIL_ON_STIMULANTS_RECAP_FILE: recaps },
       input: JSON.stringify({ hook_event_name: event, session_id: 'codex-1', cwd: home, ...data }),
       encoding: 'utf8',
     })).at(-1);
     assert.equal(hook('UserPromptSubmit', { prompt: 'Explain the parser' }).status, 0);
     const stop = hook('Stop', { last_assistant_message: 'It tokenizes first.' });
     assert.equal(stop.status, 0, stop.stderr);
+    const telemetry = fs.readFileSync(path.join(home, 'ponytail-on-stimulants', 'slow-turn-retro.jsonl'), 'utf8');
+    assert.equal(JSON.parse(telemetry).decision, 'skip');
     assert.match(fs.readFileSync(recaps, 'utf8'), /\tcodex\t~\t-\tcodex-1\t.*\tExplain the parser → It tokenizes first\.\n$/);
     assert.ok(fs.readdirSync(path.join(codexHome, 'ponytail-on-stimulants')).some((name) => name.startsWith('.ponytail-on-stimulants-turn-')));
 

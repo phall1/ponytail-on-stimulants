@@ -24,6 +24,14 @@ Releases are deliberate; the fork never publishes under an upstream identity.
 
 Do not release from a dirty tree, a failed check, an unresolved upstream conflict, or a manual workflow that bypasses the tag/version contract.
 
+## v0.6.0 slow-turn retro
+
+- Claude Code and Codex get a fast Stop hook that measures active time,
+  subtracts observable passive waits, and requests one bounded speedup pass
+  on qualifying interactive turns.
+- Local JSONL telemetry records skips, fires, answer rescue and retro wall
+  time. A read-only dry run replays historical transcripts.
+
 ## v0.5.1 recap quality and Codex user hooks
 
 - Recap outcomes use the turn's answer from before a completion pass rather
